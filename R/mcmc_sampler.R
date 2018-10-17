@@ -45,6 +45,7 @@
 #' # Simulate some data:
 #' sim_data = simulate_dfosr(T = 100, m = 20)
 #' Y = sim_data$Y; tau = sim_data$tau
+#' T = nrow(Y); m = ncol(Y); # Dimensions
 #'
 #' # Run the MCMC w/ K = 6:
 #' out = fdlm(Y = Y, tau = tau, K = 6,
@@ -57,8 +58,8 @@
 #' # Plot the loading curves:
 #' plot_flc(post_fk = out$fk, tau = tau)
 #'
-#' # Plot a fitted value:
-#' i = sample(1:nrow(Y),1); # Select a random time i
+#' # Plot a fitted value w/ posterior predictive credible intervals:
+#' i = sample(1:T, 1); # Select a random time i
 #' plot_fitted(y = Y[i,],
 #'             mu = colMeans(out$Yhat)[i,],
 #'             postY = out$Ypred[,i,],
@@ -125,10 +126,18 @@ fdlm = function(Y, tau, K = NULL,
 #' # Simulate some data:
 #' sim_data = simulate_dfosr(T = 100, m = 20, p_0 = 5, p_1 = 5)
 #' Y = sim_data$Y; X = sim_data$X; tau = sim_data$tau
+#' T = nrow(Y); m = ncol(Y); p = ncol(X) # Dimensions
 #'
 #' # Run the MCMC w/ K = 6:
 #' out = fosr(Y = Y, tau = tau, X = X, K = 6,
 #'            mcmc_params = list("beta", "fk", "alpha", "Yhat", "Ypred"))
+#'
+#' # Plot a regression coefficient function (Note: these are non-dynamic)
+#' j = 3 # choose a predictor
+#' post_alpha_tilde_j = get_post_alpha_tilde(out$fk, out$alpha[,j,])
+#' plot_curve(post_f = post_alpha_tilde_j,
+#'            tau = tau,
+#'            main = paste('Posterior Mean and Credible bands, j =',j))
 #'
 #' # Plot the factors:
 #' plot_factors(post_beta = out$beta)
@@ -136,8 +145,8 @@ fdlm = function(Y, tau, K = NULL,
 #' # Plot the loading curves:
 #' plot_flc(post_fk = out$fk, tau = tau)
 #'
-#' # Plot a fitted value:
-#' i = sample(1:nrow(Y),1); # Select a random time i
+#' # Plot a fitted value w/ posterior predictive credible intervals:
+#' i = sample(1:T, 1); # Select a random time i
 #' plot_fitted(y = Y[i,],
 #'             mu = colMeans(out$Yhat)[i,],
 #'             postY = out$Ypred[,i,],
@@ -513,6 +522,7 @@ fosr = function(Y, tau, X = NULL, K = NULL,
 #' \item "fk" (loading curves)
 #' \item "alpha" (regression coefficients)
 #' \item "mu_k" (intercept term for factor k)
+#' \item "ar_phi" (AR coefficients for each k under AR(1) model)
 #' \item "sigma_et" (observation error SD)
 #' \item "Yhat" (fitted values)
 #' \item "Ypred" (posterior predictive values)
@@ -532,10 +542,22 @@ fosr = function(Y, tau, X = NULL, K = NULL,
 #' # Simulate some data:
 #' sim_data = simulate_dfosr(T = 100, m = 20, p_0 = 5, p_1 = 5)
 #' Y = sim_data$Y; X = sim_data$X; tau = sim_data$tau
+#' T = nrow(Y); m = ncol(Y); p = ncol(X) # Dimensions
 #'
 #' # Run the MCMC w/ K = 6:
 #' out = fosr_ar(Y = Y, tau = tau, X = X, K = 6,
-#'               mcmc_params = list("beta", "fk", "alpha", "Yhat", "Ypred"))
+#'               mcmc_params = list("beta", "fk", "alpha", "ar_phi", "Yhat", "Ypred"))
+#'
+#' # Plot a regression coefficient function (Note: these are non-dynamic)
+#' j = 3 # choose a predictor
+#' post_alpha_tilde_j = get_post_alpha_tilde(out$fk, out$alpha[,1,j,])
+#' plot_curve(post_f = post_alpha_tilde_j,
+#'            tau = tau,
+#'            main = paste('Posterior Mean and Credible bands, j =',j))
+#'
+#' # Evidence for autocorrelation via the AR(1) coefficients:
+#' plot(as.ts(out$ar_phi))
+#' apply(out$ar_phi, 2, quantile, c(0.05/2, 1 - 0.05/2)) # 95% credible intervals
 #'
 #' # Plot the factors:
 #' plot_factors(post_beta = out$beta)
@@ -543,8 +565,8 @@ fosr = function(Y, tau, X = NULL, K = NULL,
 #' # Plot the loading curves:
 #' plot_flc(post_fk = out$fk, tau = tau)
 #'
-#' # Plot a fitted value:
-#' i = sample(1:nrow(Y),1); # Select a random time i
+#' # Plot a fitted value w/ posterior predictive credible intervals:
+#' i = sample(1:T, 1); # Select a random time i
 #' plot_fitted(y = Y[i,],
 #'             mu = colMeans(out$Yhat)[i,],
 #'             postY = out$Ypred[,i,],
@@ -626,6 +648,7 @@ fosr_ar = function(Y, tau, X = NULL, K = NULL,
 #' # Simulate some data:
 #' sim_data = simulate_dfosr(T = 100, m = 20, p_0 = 5, p_1 = 5)
 #' Y = sim_data$Y; X = sim_data$X; tau = sim_data$tau
+#' T = nrow(Y); m = ncol(Y); p = ncol(X) # Dimensions
 #'
 #' # Run the MCMC w/ K = 6:
 #' out = dfosr(Y = Y, tau = tau, X = X, K = 6,
@@ -633,14 +656,51 @@ fosr_ar = function(Y, tau, X = NULL, K = NULL,
 #'            use_dynamic_reg = TRUE,
 #'            mcmc_params = list("beta", "fk", "alpha", "Yhat", "Ypred"))
 #'
+#' # Plot a dynamic regression coefficient function
+#' j = 3 # choose a predictor
+#' post_alpha_tilde_j = get_post_alpha_tilde(out$fk, out$alpha[,,j,])
+#' # Posterior mean:
+#' alpha_tilde_j_pm = colMeans(post_alpha_tilde_j)
+#' # Lower 95% credible interval:
+#' alpha_tilde_j_lower = apply(post_alpha_tilde_j, 2:3, quantile, c(0.05/2))
+#' # Upper 95% credible interval:
+#' alpha_tilde_j_upper = apply(post_alpha_tilde_j, 2:3, quantile, c(1 - 0.05/2))
+#' # Lower pointwise interval:
+#' filled.contour(1:T, tau, alpha_tilde_j_lower,
+#'                zlim = range(alpha_tilde_j_lower, alpha_tilde_j_upper),
+#'                color = terrain.colors,
+#'                xlab = 'Time', ylab = expression(tau),
+#'                main = paste('Lower 95% Credible Intervals, j =',j))
+#' # Posterior Mean:
+#' filled.contour(1:T, tau, alpha_tilde_j_pm,
+#'                zlim = range(alpha_tilde_j_lower, alpha_tilde_j_upper),
+#'                color = terrain.colors,
+#'                xlab = 'Time', ylab = expression(tau),
+#'                main = paste('Posterior Mean, j =',j))
+#' # Upper pointwise interval:
+#' filled.contour(1:T, tau, alpha_tilde_j_upper,
+#'                zlim = range(alpha_tilde_j_lower, alpha_tilde_j_upper),
+#'                color = terrain.colors,
+#'                xlab = 'Time', ylab = expression(tau),
+#'                main = paste('Upper 95% Credible Intervals, j =',j))
+#'
+#' # Verify by plotting at two time slices:
+#' t1 = ceiling(0.2*T); t2 = ceiling(0.8*T)
+#' plot_curve(post_f = post_alpha_tilde_j[,t1,],
+#'            tau = tau,
+#'            main = paste('Predictor j =',j,'at time t =',t1))
+#' plot_curve(post_f = post_alpha_tilde_j[,t2,],
+#'            tau = tau,
+#'            main = paste('Predictor j =',j,'at time t =',t2))
+#'
 #' # Plot the factors:
 #' plot_factors(post_beta = out$beta)
 #'
 #' # Plot the loading curves:
 #' plot_flc(post_fk = out$fk, tau = tau)
 #'
-#' # Plot a fitted value:
-#' i = sample(1:nrow(Y),1); # Select a random time i
+#' # Plot a fitted value w/ posterior predictive credible intervals:
+#' i = sample(1:T, 1); # Select a random time i
 #' plot_fitted(y = Y[i,],
 #'             mu = colMeans(out$Yhat)[i,],
 #'             postY = out$Ypred[,i,],

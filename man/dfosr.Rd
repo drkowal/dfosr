@@ -76,6 +76,7 @@ so the sampler is O(T*K*p^3) instead of O(T*(K*p)^3).
 # Simulate some data:
 sim_data = simulate_dfosr(T = 100, m = 20, p_0 = 5, p_1 = 5)
 Y = sim_data$Y; X = sim_data$X; tau = sim_data$tau
+T = nrow(Y); m = ncol(Y); p = ncol(X) # Dimensions
 
 # Run the MCMC w/ K = 6:
 out = dfosr(Y = Y, tau = tau, X = X, K = 6,
@@ -83,14 +84,51 @@ out = dfosr(Y = Y, tau = tau, X = X, K = 6,
            use_dynamic_reg = TRUE,
            mcmc_params = list("beta", "fk", "alpha", "Yhat", "Ypred"))
 
+# Plot a dynamic regression coefficient function
+j = 3 # choose a predictor
+post_alpha_tilde_j = get_post_alpha_tilde(out$fk, out$alpha[,,j,])
+# Posterior mean:
+alpha_tilde_j_pm = colMeans(post_alpha_tilde_j)
+# Lower 95\% credible interval:
+alpha_tilde_j_lower = apply(post_alpha_tilde_j, 2:3, quantile, c(0.05/2))
+# Upper 95\% credible interval:
+alpha_tilde_j_upper = apply(post_alpha_tilde_j, 2:3, quantile, c(1 - 0.05/2))
+# Lower pointwise interval:
+filled.contour(1:T, tau, alpha_tilde_j_lower,
+               zlim = range(alpha_tilde_j_lower, alpha_tilde_j_upper),
+               color = terrain.colors,
+               xlab = 'Time', ylab = expression(tau),
+               main = paste('Lower 95\% Credible Intervals, j =',j))
+# Posterior Mean:
+filled.contour(1:T, tau, alpha_tilde_j_pm,
+               zlim = range(alpha_tilde_j_lower, alpha_tilde_j_upper),
+               color = terrain.colors,
+               xlab = 'Time', ylab = expression(tau),
+               main = paste('Posterior Mean, j =',j))
+# Upper pointwise interval:
+filled.contour(1:T, tau, alpha_tilde_j_upper,
+               zlim = range(alpha_tilde_j_lower, alpha_tilde_j_upper),
+               color = terrain.colors,
+               xlab = 'Time', ylab = expression(tau),
+               main = paste('Upper 95\% Credible Intervals, j =',j))
+
+# Verify by plotting at two time slices:
+t1 = ceiling(0.2*T); t2 = ceiling(0.8*T)
+plot_curve(post_f = post_alpha_tilde_j[,t1,],
+           tau = tau,
+           main = paste('Predictor j =',j,'at time t =',t1))
+plot_curve(post_f = post_alpha_tilde_j[,t2,],
+           tau = tau,
+           main = paste('Predictor j =',j,'at time t =',t2))
+
 # Plot the factors:
 plot_factors(post_beta = out$beta)
 
 # Plot the loading curves:
 plot_flc(post_fk = out$fk, tau = tau)
 
-# Plot a fitted value:
-i = sample(1:nrow(Y),1); # Select a random time i
+# Plot a fitted value w/ posterior predictive credible intervals:
+i = sample(1:T, 1); # Select a random time i
 plot_fitted(y = Y[i,],
             mu = colMeans(out$Yhat)[i,],
             postY = out$Ypred[,i,],

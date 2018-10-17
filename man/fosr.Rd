@@ -56,10 +56,18 @@ If \code{Tm} is large, then storing all posterior samples for \code{Yhat} or \co
 # Simulate some data:
 sim_data = simulate_dfosr(T = 100, m = 20, p_0 = 5, p_1 = 5)
 Y = sim_data$Y; X = sim_data$X; tau = sim_data$tau
+T = nrow(Y); m = ncol(Y); p = ncol(X) # Dimensions
 
 # Run the MCMC w/ K = 6:
 out = fosr(Y = Y, tau = tau, X = X, K = 6,
            mcmc_params = list("beta", "fk", "alpha", "Yhat", "Ypred"))
+
+# Plot a regression coefficient function (Note: these are non-dynamic)
+j = 3 # choose a predictor
+post_alpha_tilde_j = get_post_alpha_tilde(out$fk, out$alpha[,j,])
+plot_curve(post_f = post_alpha_tilde_j,
+           tau = tau,
+           main = paste('Posterior Mean and Credible bands, j =',j))
 
 # Plot the factors:
 plot_factors(post_beta = out$beta)
@@ -67,8 +75,8 @@ plot_factors(post_beta = out$beta)
 # Plot the loading curves:
 plot_flc(post_fk = out$fk, tau = tau)
 
-# Plot a fitted value:
-i = sample(1:nrow(Y),1); # Select a random time i
+# Plot a fitted value w/ posterior predictive credible intervals:
+i = sample(1:T, 1); # Select a random time i
 plot_fitted(y = Y[i,],
             mu = colMeans(out$Yhat)[i,],
             postY = out$Ypred[,i,],

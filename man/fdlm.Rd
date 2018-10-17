@@ -65,6 +65,7 @@ If \code{Tm} is large, then storing all posterior samples for \code{Yhat} or \co
 # Simulate some data:
 sim_data = simulate_dfosr(T = 100, m = 20)
 Y = sim_data$Y; tau = sim_data$tau
+T = nrow(Y); m = ncol(Y); # Dimensions
 
 # Run the MCMC w/ K = 6:
 out = fdlm(Y = Y, tau = tau, K = 6,
@@ -77,8 +78,8 @@ plot_factors(post_beta = out$beta)
 # Plot the loading curves:
 plot_flc(post_fk = out$fk, tau = tau)
 
-# Plot a fitted value:
-i = sample(1:nrow(Y),1); # Select a random time i
+# Plot a fitted value w/ posterior predictive credible intervals:
+i = sample(1:T, 1); # Select a random time i
 plot_fitted(y = Y[i,],
             mu = colMeans(out$Yhat)[i,],
             postY = out$Ypred[,i,],

@@ -204,6 +204,38 @@ fdlm_init = function(Y, tau, K = NULL, use_pace = TRUE){
 
   list(Beta = Beta0, Psi = Psi0, splineInfo = splineInfo, Y0 = Y0)
 }
+#----------------------------------------------------------------------------
+#' Compute the posterior distrubution for the regression coefficient functions
+#'
+#' Given posterior samples for the loading curves \code{fk} and the
+#' regression coefficient factors \code{alpha_j} for a predictor \code{j},
+#' compute the posterior distribution of the corresponding (dynamic) regression coefficient function.
+#'
+#' @param post_fk \code{Nsims x m x K} matrix of posterior draws of the loading curve matrix
+#' @param post_alpha_j \code{Nsims x T x K} array or \code{Nsims x K} matrix
+#' of posterior draws of the (dynamic) regression coefficient factors
+#'
+#' @return \code{Nsims x T x m} matrix of posterior draws of the regression coefficient function
+#' @export
+get_post_alpha_tilde = function(post_fk, post_alpha_j){
+
+  # Compute dimensions:
+  Nsims = dim(post_fk)[1]; m = dim(post_fk)[2]; K = dim(post_fk)[3]
+
+  # Check: post_alpha_j might be (Nsims x K) or (Nsims x T x K)
+  if(dim(post_alpha_j)[2] == K){
+    # Non-dynamic case: (Nsims x K)
+    post_alpha_tilde_j = array(0, c(Nsims, m))
+    for(ni in 1:Nsims) post_alpha_tilde_j[ni,] = tcrossprod(post_alpha_j[ni,], post_fk[ni,,])
+  } else {
+    # Dynamic case: (Nsims x T x K)
+    T = dim(post_alpha_j)[2]
+    post_alpha_tilde_j = array(0, c(Nsims, T, m))
+    for(ni in 1:Nsims) post_alpha_tilde_j[ni,,] = tcrossprod(post_alpha_j[ni,,], post_fk[ni,,])
+  }
+
+  post_alpha_tilde_j
+}
 #####################################################################################################
 # Update (or initialize) the SSModel object used for sampling the factors
 # Inputs:
