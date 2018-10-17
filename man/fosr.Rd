@@ -54,7 +54,7 @@ If \code{Tm} is large, then storing all posterior samples for \code{Yhat} or \co
 \examples{
 \dontrun{
 # Simulate some data:
-sim_data = simulate_dfosr(T = 100, m = 20, p_0 = 5, p_1 = 5)
+sim_data = simulate_dfosr(T = 100, m = 20, p_0 = 2, p_1 = 2, use_dynamic_reg = FALSE)
 Y = sim_data$Y; X = sim_data$X; tau = sim_data$tau
 T = nrow(Y); m = ncol(Y); p = ncol(X) # Dimensions
 
@@ -68,6 +68,8 @@ post_alpha_tilde_j = get_post_alpha_tilde(out$fk, out$alpha[,j,])
 plot_curve(post_f = post_alpha_tilde_j,
            tau = tau,
            main = paste('Posterior Mean and Credible bands, j =',j))
+# Add the true regression coefficient function:
+lines(tau, sim_data$alpha_tilde_true[1,j,], lwd=8, col='black', lty=6)
 
 # Plot the factors:
 plot_factors(post_beta = out$beta)

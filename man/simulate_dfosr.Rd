@@ -2,7 +2,7 @@
 % Please edit documentation in R/helper_functions.R
 \name{simulate_dfosr}
 \alias{simulate_dfosr}
-\title{Simulate a dynamic function-on-scalar regression model}
+\title{Simulate a dynamic function-on-scalars regression model}
 \usage{
 simulate_dfosr(T = 200, m = 100, RSNR = 5, K_true = 4, p_0 = 10,
   p_1 = 5, use_dynamic_reg = TRUE, sparse_factors = TRUE, ar1 = 0,
@@ -45,7 +45,7 @@ a list containing the following:
 }
 }
 \description{
-Simulate data from a dynamic function-on-scalar regression model, allowing for
+Simulate data from a dynamic function-on-scalars regression model, allowing for
 autocorrelated errors and (possibly) dynamic regression coefficients random effects.
 The predictors are contemporaneously independent but (possibly) autocorrelated.
 }

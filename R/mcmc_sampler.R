@@ -124,7 +124,7 @@ fdlm = function(Y, tau, K = NULL,
 #' @examples
 #' \dontrun{
 #' # Simulate some data:
-#' sim_data = simulate_dfosr(T = 100, m = 20, p_0 = 5, p_1 = 5)
+#' sim_data = simulate_dfosr(T = 100, m = 20, p_0 = 2, p_1 = 2, use_dynamic_reg = FALSE)
 #' Y = sim_data$Y; X = sim_data$X; tau = sim_data$tau
 #' T = nrow(Y); m = ncol(Y); p = ncol(X) # Dimensions
 #'
@@ -138,6 +138,8 @@ fdlm = function(Y, tau, K = NULL,
 #' plot_curve(post_f = post_alpha_tilde_j,
 #'            tau = tau,
 #'            main = paste('Posterior Mean and Credible bands, j =',j))
+#' # Add the true regression coefficient function:
+#' lines(tau, sim_data$alpha_tilde_true[1,j,], lwd=8, col='black', lty=6)
 #'
 #' # Plot the factors:
 #' plot_factors(post_beta = out$beta)
@@ -540,7 +542,7 @@ fosr = function(Y, tau, X = NULL, K = NULL,
 #' @examples
 #' \dontrun{
 #' # Simulate some data:
-#' sim_data = simulate_dfosr(T = 100, m = 20, p_0 = 5, p_1 = 5)
+#' sim_data = simulate_dfosr(T = 100, m = 20, p_0 = 2, p_1 = 2, use_dynamic_reg = FALSE)
 #' Y = sim_data$Y; X = sim_data$X; tau = sim_data$tau
 #' T = nrow(Y); m = ncol(Y); p = ncol(X) # Dimensions
 #'
@@ -554,6 +556,8 @@ fosr = function(Y, tau, X = NULL, K = NULL,
 #' plot_curve(post_f = post_alpha_tilde_j,
 #'            tau = tau,
 #'            main = paste('Posterior Mean and Credible bands, j =',j))
+#' # Add the true regression coefficient function:
+#' lines(tau, sim_data$alpha_tilde_true[1,j,], lwd=8, col='black', lty=6)
 #'
 #' # Evidence for autocorrelation via the AR(1) coefficients:
 #' plot(as.ts(out$ar_phi))
@@ -646,7 +650,7 @@ fosr_ar = function(Y, tau, X = NULL, K = NULL,
 #' @examples
 #' \dontrun{
 #' # Simulate some data:
-#' sim_data = simulate_dfosr(T = 100, m = 20, p_0 = 5, p_1 = 5)
+#' sim_data = simulate_dfosr(T = 200, m = 50, p_0 = 2, p_1 = 2)
 #' Y = sim_data$Y; X = sim_data$X; tau = sim_data$tau
 #' T = nrow(Y); m = ncol(Y); p = ncol(X) # Dimensions
 #'
@@ -678,20 +682,30 @@ fosr_ar = function(Y, tau, X = NULL, K = NULL,
 #'                xlab = 'Time', ylab = expression(tau),
 #'                main = paste('Posterior Mean, j =',j))
 #' # Upper pointwise interval:
-#' filled.contour(1:T, tau, alpha_tilde_j_upper,
+#' filled.contour(1:T, tau, sim_data$alpha_tilde_true[,j,],
 #'                zlim = range(alpha_tilde_j_lower, alpha_tilde_j_upper),
 #'                color = terrain.colors,
 #'                xlab = 'Time', ylab = expression(tau),
 #'                main = paste('Upper 95% Credible Intervals, j =',j))
+#' # Truth:
+#' filled.contour(1:T, tau, alpha_tilde_j_upper,
+#'                zlim = range(alpha_tilde_j_lower, alpha_tilde_j_upper),
+#'                color = terrain.colors,
+#'                xlab = 'Time', ylab = expression(tau),
+#'                main = paste('True regression coefficients, j =',j))
 #'
 #' # Verify by plotting at two time slices:
 #' t1 = ceiling(0.2*T); t2 = ceiling(0.8*T)
 #' plot_curve(post_f = post_alpha_tilde_j[,t1,],
 #'            tau = tau,
 #'            main = paste('Predictor j =',j,'at time t =',t1))
+#' # Add the true regression coefficient function:
+#' lines(tau, sim_data$alpha_tilde_true[t1,j,], lwd=8, col='black', lty=6)
 #' plot_curve(post_f = post_alpha_tilde_j[,t2,],
 #'            tau = tau,
 #'            main = paste('Predictor j =',j,'at time t =',t2))
+#' # Add the true regression coefficient function:
+#' lines(tau, sim_data$alpha_tilde_true[t2,j,], lwd=8, col='black', lty=6)
 #'
 #' # Plot the factors:
 #' plot_factors(post_beta = out$beta)

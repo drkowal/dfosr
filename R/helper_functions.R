@@ -1,7 +1,116 @@
 #----------------------------------------------------------------------------
-#' Simulate a dynamic function-on-scalar regression model
+#' Forecast with a dynamic function-on-scalars regression model
 #'
-#' Simulate data from a dynamic function-on-scalar regression model, allowing for
+#' Compute the one-step forecasting estimate
+#' under a dynamic function-on-scalars regression model.
+#'
+#' @param X_Tp1 the \code{p x 1} matrix of predictors at the forecasting time point \code{T + 1};
+#' if \code{NULL}, set to an intercept
+#' @param post_sims a named list of posterior draws for the following parameters:
+#' \itemize{
+#' \item \code{alpha} (regression coefficients)
+#' \item \code{fk} (loading curves)
+#' \item \code{mu_k} (intercept term for factor k)
+#' \item \code{ar_phi} (OPTIONAL; AR coefficients for each k under AR(1) model)
+#' }
+#' @param factor_model model for the (dynamic) factors;
+#' must be one of
+#' \itemize{
+#' \item "IND" (independent errors)
+#' \item "AR" (stationary autoregression of order 1)
+#' \item "RW" (random walk model)
+#' }
+#'
+#' @return \code{Yfore}, the \code{m x 1} curve forecasting estimate
+#'
+#' @examples
+#' \dontrun{
+#' # Simulate some data:
+#' sim_data = simulate_dfosr(T = 200, m = 50, p_0 = 2, p_1 = 2)
+#' Y = sim_data$Y; X = sim_data$X; tau = sim_data$tau
+#' T = nrow(Y); m = ncol(Y); p = ncol(X) # Dimensions
+#'
+#' # Delete and store the last time point (for forecasting):
+#' Y_Tp1 = Y[T,]; X_Tp1 = X[T,]
+#' Y = Y[-T,]; X = X[-T,]; T = nrow(Y);
+#'
+#' # Run the MCMC w/ K = 6:
+#' out = dfosr(Y = Y, tau = tau, X = X, K = 6,
+#'            factor_model = 'AR',
+#'            use_dynamic_reg = TRUE,
+#'            mcmc_params = list("beta", "fk", "alpha", "mu_k", "ar_phi"))
+#'
+#' # Compute one-step forecasts:
+#' Yfore = forecast_dfosr(X_Tp1 = X_Tp1,
+#'                        post_sims = out,
+#'                        factor_model = "AR")
+#' # Plot the results:
+#' plot(tau, Yfore, ylim = range(Yfore, Y_Tp1, Y[T,], na.rm=TRUE),
+#'      main = 'One-Step Forecast',
+#'      lwd = 8, col = "cyan", type = 'l')
+#' # Add the most recent observed curve:
+#' lines(tau, Y[T,], type='p', pch = 2)
+#' # Add the realized curve:
+#' lines(tau, Y_Tp1, type='p')
+#' # And the true curve:
+#' lines(tau, sim_data$Y_true[T+1,], lwd=8, col='black', lty=6)
+#'}
+#' @export
+forecast_dfosr = function(X_Tp1 = NULL,
+                          post_sims,
+                          factor_model = 'AR'){
+  # Convert to upper case, then check for matches to existing models:
+  factor_model = toupper(factor_model);
+  if(is.na(match(factor_model, c("RW", "AR", "IND"))))
+    stop("The factor model must be one of 'RW', 'AR', or 'IND'")
+
+  # Check: if AR, be sure that we've included the AR(1) parameters
+  if(factor_model == 'AR' && is.na(match('ar_phi', names(post_sims))))
+    stop("For AR, must include 'ar_phi' (autoregressive) parameters")
+
+  # Check: is everything there?
+  if(is.na(match('alpha', names(post_sims))))
+    stop("Must include 'alpha' (regression coefficient) parameters")
+  if(is.na(match('fk', names(post_sims))))
+    stop("Must include 'fk' (loading curve) parameters")
+  if(is.na(match('mu_k', names(post_sims))))
+    stop("Must include 'mu_k' (intercept) parameters")
+
+  # Compute dimensions locally:
+  Nsims = dim(post_sims$fk)[1];
+  m = dim(post_sims$fk)[2];
+  K = dim(post_sims$fk)[3];
+  T = dim(post_sims$alpha)[2]
+  p = dim(post_sims$alpha)[3]
+
+  # Check the matrix:
+  if(is.null(X_Tp1)) X_Tp1 = 1
+  if(length(X_Tp1) != p)
+    stop("Dimension of predictor X_Tp1 must align with alpha; try including/exlcuding an intercept")
+  X_Tp1 = matrix(X_Tp1, ncol = p)
+
+  # Simple implementation: loop over samples
+  Yfore = numeric(m) # Storage
+  for(nsi in 1:Nsims){
+    Betafore = numeric(K) # Forecast for each beta_k
+    for(k in 1:K){
+      if(factor_model=="RW")
+        alpha_k_fore = post_sims$alpha[nsi,T,,k]
+      if(factor_model=="AR")
+        alpha_k_fore = c(post_sims$ar_phi[nsi,k]*post_sims$alpha[nsi,T,1,k], post_sims$alpha[nsi,T,-1,k])
+      if(factor_model=="IND")
+        alpha_k_fore = c(0, post_sims$alpha[nsi,T,-1,k])
+
+      Betafore[k] = post_sims$mu_k[nsi,k] +  X_Tp1%*%alpha_k_fore
+    }
+    Yfore = Yfore + 1/Nsims*post_sims$fk[nsi,,]%*%Betafore
+  }
+  Yfore
+}
+#----------------------------------------------------------------------------
+#' Simulate a dynamic function-on-scalars regression model
+#'
+#' Simulate data from a dynamic function-on-scalars regression model, allowing for
 #' autocorrelated errors and (possibly) dynamic regression coefficients random effects.
 #' The predictors are contemporaneously independent but (possibly) autocorrelated.
 #'
@@ -68,7 +177,7 @@ simulate_dfosr = function(T = 200,
                      arima.sim(n = T, list(ar = ar1), sd = sqrt(1-ar1^2))))
 
   # True coefficients:
-  alpha_arr_true =array(0, c(T, p, K_true))
+  alpha_arr_true = array(0, c(T, p, K_true))
 
   # p = 1 Intercept coefficients: just use K:1
   alpha_arr_true[,1,] = matrix(rep(1/(1:K_true), each = T), nrow = T)
@@ -89,6 +198,11 @@ simulate_dfosr = function(T = 200,
 
   }}
 
+
+  # True regression coefficient functions:
+  alpha_tilde_true = array(0, c(T, p, m))
+  for(j in 1:p) alpha_tilde_true[,j,] = tcrossprod(alpha_arr_true[,j,], F_true)
+
   # Dynamic factors:
   Beta_true = matrix(0, nrow = T, ncol = K_true)
   for(k in 1:K_true) Beta_true[,k] = rowSums(X*alpha_arr_true[,,k]) + arima.sim(n = T, list(ar = 0.8), sd = sqrt(1-0.8^2)*1/k)
@@ -106,7 +220,7 @@ simulate_dfosr = function(T = 200,
   if(perc_missing > 0 ) Y[sample(1:length(Y), perc_missing*length(Y))] = NA
 
   list(Y = Y, X = X, tau = tau,
-       Y_true = Y_true, #alpha_tilde_true = alpha_tilde_true,
+       Y_true = Y_true, alpha_tilde_true = alpha_tilde_true,
        alpha_arr_true = alpha_arr_true, Beta_true = Beta_true, F_true = F_true, sigma_true = sigma_true)
 }
 #' Initialize the reduced-rank functional data model
