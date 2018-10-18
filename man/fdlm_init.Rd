@@ -4,7 +4,7 @@
 \alias{fdlm_init}
 \title{Initialize the reduced-rank functional data model}
 \usage{
-fdlm_init(Y, tau, K = NULL, use_pace = TRUE)
+fdlm_init(Y, tau, K = NULL, use_pace = FALSE)
 }
 \arguments{
 \item{Y}{the \code{T x m} data observation matrix, where \code{T} is the number of time points and \code{m} is the number of observation points (\code{NA}s allowed)}
@@ -13,7 +13,8 @@ fdlm_init(Y, tau, K = NULL, use_pace = TRUE)
 
 \item{K}{the number of factors; if \code{NULL}, select using proportion of variability explained (0.99)}
 
-\item{use_pace}{logical; if TRUE, use the PACE procedure for FPCA (only for \code{d} = 1)}
+\item{use_pace}{logical; if TRUE, use the PACE procedure for FPCA (only for \code{d} = 1);
+otherwise use splines}
 }
 \value{
 a list containing

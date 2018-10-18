@@ -6,7 +6,7 @@
 \usage{
 simulate_dfosr(T = 200, m = 100, RSNR = 5, K_true = 4, p_0 = 10,
   p_1 = 5, use_dynamic_reg = TRUE, sparse_factors = TRUE, ar1 = 0,
-  perc_missing = 0)
+  prop_missing = 0)
 }
 \arguments{
 \item{T}{number of observed curves (i.e., number of time points)}
@@ -28,7 +28,7 @@ sample a subset of k=1:K_true factors to be nonzero#'}
 
 \item{ar1}{AR(1) coefficient for time-correlated predictors}
 
-\item{perc_missing}{percentage of missing data (between 0 and 1); default is zero}
+\item{prop_missing}{proportion of missing data (between 0 and 1); default is zero}
 }
 \value{
 a list containing the following:

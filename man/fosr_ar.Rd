@@ -6,7 +6,7 @@
 Time Series Errors}
 \usage{
 fosr_ar(Y, tau, X = NULL, K = NULL, nsave = 1000, nburn = 1000,
-  nskip = 3, mcmc_params = list("beta", "fk", "alpha"),
+  nskip = 3, mcmc_params = list("beta", "fk", "alpha"), X_Tp1 = NULL,
   use_obs_SV = FALSE, includeBasisInnovation = FALSE, computeDIC = TRUE)
 }
 \arguments{
@@ -36,7 +36,11 @@ must be one or more of
 \item "sigma_et" (observation error SD)
 \item "Yhat" (fitted values)
 \item "Ypred" (posterior predictive values)
+\item "Yfore" (one-step forecast; includes the estimate and the distribution)
 }}
+
+\item{X_Tp1}{the \code{p x 1} matrix of predictors at the forecasting time point \code{T + 1};
+if \code{NULL}, set to an intercept}
 
 \item{use_obs_SV}{logical; when TRUE, include a stochastic volatility model
 for the observation error variance}
@@ -94,6 +98,8 @@ plot_fitted(y = Y[i,],
             postY = out$Ypred[,i,],
             y_true = sim_data$Y_true[i,],
             t01 = tau)
+
+
 }
 
 }

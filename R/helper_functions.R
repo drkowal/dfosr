@@ -124,7 +124,7 @@ forecast_dfosr = function(X_Tp1 = NULL,
 #' @param sparse_factors logical; if TRUE, then for each nonzero predictor j,
 #' sample a subset of k=1:K_true factors to be nonzero#'
 #' @param ar1 AR(1) coefficient for time-correlated predictors
-#' @param perc_missing percentage of missing data (between 0 and 1); default is zero
+#' @param prop_missing proportion of missing data (between 0 and 1); default is zero
 #'
 #' @return a list containing the following:
 #' \itemize{
@@ -158,7 +158,7 @@ simulate_dfosr = function(T = 200,
                          use_dynamic_reg = TRUE,
                          sparse_factors = TRUE,
                          ar1 = 0,
-                         perc_missing = 0){
+                         prop_missing = 0){
   # Number of predictors:
   p = 1 + p_1 + p_0
 
@@ -217,7 +217,7 @@ simulate_dfosr = function(T = 200,
   Y = Y_true + sigma_true*rnorm(m*T)
 
   # Remove any observation points:
-  if(perc_missing > 0 ) Y[sample(1:length(Y), perc_missing*length(Y))] = NA
+  if(prop_missing > 0 ) Y[sample(1:length(Y), prop_missing*length(Y))] = NA
 
   list(Y = Y, X = X, tau = tau,
        Y_true = Y_true, alpha_tilde_true = alpha_tilde_true,
@@ -231,7 +231,8 @@ simulate_dfosr = function(T = 200,
 #' @param Y the \code{T x m} data observation matrix, where \code{T} is the number of time points and \code{m} is the number of observation points (\code{NA}s allowed)
 #' @param tau the \code{m x d} matrix of coordinates of observation points
 #' @param K the number of factors; if \code{NULL}, select using proportion of variability explained (0.99)
-#' @param use_pace logical; if TRUE, use the PACE procedure for FPCA (only for \code{d} = 1)
+#' @param use_pace logical; if TRUE, use the PACE procedure for FPCA (only for \code{d} = 1);
+#' otherwise use splines
 #' @return a list containing
 #' \itemize{
 #' \item \code{Beta} the \code{T x K} matrix of factors
@@ -246,7 +247,7 @@ simulate_dfosr = function(T = 200,
 #' it is also only valid for univariate observation points
 #'
 #' @import fdapace
-fdlm_init = function(Y, tau, K = NULL, use_pace = TRUE){
+fdlm_init = function(Y, tau, K = NULL, use_pace = FALSE){
 
   # Convert to matrix, if necessary:
   tau = as.matrix(tau)
@@ -267,7 +268,7 @@ fdlm_init = function(Y, tau, K = NULL, use_pace = TRUE){
   allMissing.t = (rowSums(!is.na(Y))==0)   # Boolean indicator of times at which no points are observed
 
   # Use PACE, or just impute w/ splines:
-  if( (d==1) && use_pace && any(is.na(Y)) ){
+  if((d==1) && use_pace && any(is.na(Y)) ){
     # To initialize, use FPCA via PACE:
     fit_fpca = FPCA(Ly =  apply(Y, 1, function(y) y[!is.na(y)]),
                     Lt = apply(Y, 1, function(y) tau01[!is.na(y)]),

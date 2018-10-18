@@ -30,7 +30,10 @@
 #' \item "sigma_et" (observation error SD; possibly dynamic)
 #' \item "Yhat" (fitted values)
 #' \item "Ypred" (posterior predictive values)
+#' \item "Yfore" (one-step forecast; includes the estimate and the distribution)
 #' }
+#' @param X_Tp1 the \code{p x 1} matrix of predictors at the forecasting time point \code{T + 1};
+#' if \code{NULL}, set to an intercept
 #' @param use_obs_SV logical; when TRUE, include a stochastic volatility model
 #' for the observation error variance
 #' @param includeBasisInnovation logical; when TRUE, include an iid basis coefficient term for residual correlation
@@ -42,8 +45,10 @@
 #' @note If \code{Tm} is large, then storing all posterior samples for \code{Yhat} or \code{Ypred}, which are \code{nsave x T x m},  may be inefficient
 #'
 #' @examples
-#' # Simulate some data:
-#' sim_data = simulate_dfosr(T = 100, m = 20)
+## Example 1: model-fitting and plotting
+#' # Simulate some data (w/o predictors):
+#' sim_data = simulate_dfosr(T = 100, m = 20,
+#'                           p_0 = 0, p_1 = 0)
 #' Y = sim_data$Y; tau = sim_data$tau
 #' T = nrow(Y); m = ncol(Y); # Dimensions
 #'
@@ -66,6 +71,26 @@
 #'             y_true = sim_data$Y_true[i,],
 #'             t01 = tau)
 #'
+# ## Example 2: forecasting
+# # Now consider a forecasting the final time point:
+# # Store the last curve separately, then delete
+# Y_Tp1 = Y[T,]; Y_true_Tp1 = sim_data$Y_true[T,]
+# Y = Y[-T,]; T = nrow(Y);
+#
+# # Run the MCMC w/ K = 6:
+# out = fdlm(Y = Y, tau = tau, K = 6,
+#            factor_model = 'AR',
+#            mcmc_params = list("Yfore"))
+#
+# # Plot the results:
+# plot_fitted(y = Y_Tp1, # (unobserved) curve
+#             mu = colMeans(out$Yfore_hat),
+#             postY = out$Yfore,
+#             y_true = Y_true_Tp1,
+#             t01 = tau)
+# # Add the most recent observed curve:
+# lines(tau, Y[T,], type='p', pch = 2)
+#'
 #' @import  KFAS truncdist
 #' @export
 fdlm = function(Y, tau, K = NULL,
@@ -73,6 +98,7 @@ fdlm = function(Y, tau, K = NULL,
                 nsave = 1000, nburn = 1000, nskip = 3,
                 mcmc_params = list("beta", "fk"),
                 use_obs_SV = FALSE,
+                X_Tp1 = NULL,
                 includeBasisInnovation = FALSE,
                 computeDIC = TRUE){
 
@@ -82,6 +108,7 @@ fdlm = function(Y, tau, K = NULL,
                       factor_model = factor_model,
                       nsave = nsave, nburn = nburn, nskip = nskip,
                       mcmc_params = mcmc_params,
+                      X_Tp1 = X_Tp1,
                       use_obs_SV = use_obs_SV,
                       includeBasisInnovation = includeBasisInnovation,
                       computeDIC = computeDIC)
@@ -123,8 +150,11 @@ fdlm = function(Y, tau, K = NULL,
 #'
 #' @examples
 #' \dontrun{
-#' # Simulate some data:
-#' sim_data = simulate_dfosr(T = 100, m = 20, p_0 = 2, p_1 = 2, use_dynamic_reg = FALSE)
+#' # Simulate some data (w/ NAs):
+#' sim_data = simulate_dfosr(T = 100, m = 20,
+#'                           p_0 = 2, p_1 = 2,
+#'                           use_dynamic_reg = FALSE,
+#'                           prop_missing = 0.5)
 #' Y = sim_data$Y; X = sim_data$X; tau = sim_data$tau
 #' T = nrow(Y); m = ncol(Y); p = ncol(X) # Dimensions
 #'
@@ -528,7 +558,10 @@ fosr = function(Y, tau, X = NULL, K = NULL,
 #' \item "sigma_et" (observation error SD)
 #' \item "Yhat" (fitted values)
 #' \item "Ypred" (posterior predictive values)
+#' \item "Yfore" (one-step forecast; includes the estimate and the distribution)
 #' }
+#' @param X_Tp1 the \code{p x 1} matrix of predictors at the forecasting time point \code{T + 1};
+#' if \code{NULL}, set to an intercept
 #' @param use_obs_SV logical; when TRUE, include a stochastic volatility model
 #' for the observation error variance
 #' @param includeBasisInnovation logical; when TRUE, include an iid basis coefficient term for residual correlation
@@ -541,6 +574,7 @@ fosr = function(Y, tau, X = NULL, K = NULL,
 #'
 #' @examples
 #' \dontrun{
+# ## Example 1: model-fitting and plotting
 #' # Simulate some data:
 #' sim_data = simulate_dfosr(T = 100, m = 20, p_0 = 2, p_1 = 2, use_dynamic_reg = FALSE)
 #' Y = sim_data$Y; X = sim_data$X; tau = sim_data$tau
@@ -576,6 +610,27 @@ fosr = function(Y, tau, X = NULL, K = NULL,
 #'             postY = out$Ypred[,i,],
 #'             y_true = sim_data$Y_true[i,],
 #'             t01 = tau)
+#'
+# ## Example 2: forecasting
+# # Now consider a forecasting the final time point:
+# # Store the last curve separately, then delete
+# Y_Tp1 = Y[T,]; X_Tp1 = X[T,]; Y_true_Tp1 = sim_data$Y_true[T,]
+# Y = Y[-T,]; X = X[-T,]; T = nrow(Y);
+#
+# # Run the MCMC w/ K = 6:
+# out = fosr_ar(Y = Y, tau = tau, X = X, K = 6,
+#               X_Tp1 = X_Tp1,
+#               mcmc_params = list("Yfore"))
+#
+# # Plot the results:
+# plot_fitted(y = Y_Tp1, # (unobserved) curve
+#             mu = colMeans(out$Yfore_hat),
+#             postY = out$Yfore,
+#             y_true = Y_true_Tp1,
+#             t01 = tau)
+# # Add the most recent observed curve:
+# lines(tau, Y[T,], type='p', pch = 2)
+#'
 #'}
 #'
 #' @import  KFAS truncdist
@@ -583,6 +638,7 @@ fosr = function(Y, tau, X = NULL, K = NULL,
 fosr_ar = function(Y, tau, X = NULL, K = NULL,
                    nsave = 1000, nburn = 1000, nskip = 3,
                    mcmc_params = list("beta", "fk", "alpha"),
+                   X_Tp1 = NULL,
                    use_obs_SV = FALSE,
                    includeBasisInnovation = FALSE,
                    computeDIC = TRUE){
@@ -593,6 +649,7 @@ fosr_ar = function(Y, tau, X = NULL, K = NULL,
                       use_dynamic_reg = FALSE, # Key term: non-dynamic regression coefficients
                       nsave = nsave, nburn = nburn, nskip = nskip,
                       mcmc_params = mcmc_params,
+                      X_Tp1 = X_Tp1,
                       use_obs_SV = use_obs_SV,
                       includeBasisInnovation = includeBasisInnovation,
                       computeDIC = computeDIC)
@@ -634,7 +691,10 @@ fosr_ar = function(Y, tau, X = NULL, K = NULL,
 #' \item "sigma_et" (observation error SD; possibly dynamic)
 #' \item "Yhat" (fitted values)
 #' \item "Ypred" (posterior predictive values)
+#' \item "Yfore" (one-step forecast; includes the estimate and the distribution)
 #' }
+#' @param X_Tp1 the \code{p x 1} matrix of predictors at the forecasting time point \code{T + 1};
+#' if \code{NULL}, set to an intercept
 #' @param use_obs_SV logical; when TRUE, include a stochastic volatility model
 #' for the observation error variance
 #' @param includeBasisInnovation logical; when TRUE, include an iid basis coefficient term for residual correlation
@@ -727,6 +787,7 @@ dfosr = function(Y, tau, X = NULL, K = NULL,
                  factor_model = 'AR', use_dynamic_reg = TRUE,
                  nsave = 1000, nburn = 1000, nskip = 3,
                  mcmc_params = list("beta", "fk", "alpha", "mu_k", "ar_phi"),
+                 X_Tp1 = NULL,
                  use_obs_SV = FALSE,
                  includeBasisInnovation = FALSE,
                  computeDIC = TRUE){
@@ -744,6 +805,7 @@ dfosr = function(Y, tau, X = NULL, K = NULL,
                            use_dynamic_reg = use_dynamic_reg,
                            nsave = nsave, nburn = nburn, nskip = nskip,
                            mcmc_params = mcmc_params,
+                           X_Tp1 = X_Tp1,
                            use_obs_SV = use_obs_SV,
                            includeBasisInnovation = includeBasisInnovation,
                            computeDIC = computeDIC)
@@ -753,6 +815,7 @@ dfosr = function(Y, tau, X = NULL, K = NULL,
                            use_dynamic_reg = use_dynamic_reg,
                            nsave = nsave, nburn = nburn, nskip = nskip,
                            mcmc_params = mcmc_params,
+                           X_Tp1 = X_Tp1,
                            use_obs_SV = use_obs_SV,
                            includeBasisInnovation = includeBasisInnovation,
                            computeDIC = computeDIC)
@@ -762,6 +825,7 @@ dfosr = function(Y, tau, X = NULL, K = NULL,
                             use_dynamic_reg = use_dynamic_reg,
                             nsave = nsave, nburn = nburn, nskip = nskip,
                             mcmc_params = mcmc_params,
+                            X_Tp1 = X_Tp1,
                             use_obs_SV = use_obs_SV,
                             includeBasisInnovation = includeBasisInnovation,
                             computeDIC = computeDIC)
@@ -793,7 +857,10 @@ dfosr = function(Y, tau, X = NULL, K = NULL,
 #' \item "sigma_et" (observation error SD; possibly dynamic)
 #' \item "Yhat" (fitted values)
 #' \item "Ypred" (posterior predictive values)
+#' \item "Yfore" (one-step forecast; includes the estimate and the distribution)
 #' }
+#' @param X_Tp1 the \code{p x 1} matrix of predictors at the forecasting time point \code{T + 1};
+#' if \code{NULL}, set to an intercept
 #' @param use_obs_SV logical; when TRUE, include a stochastic volatility model
 #' for the observation error variance
 #' @param includeBasisInnovation logical; when TRUE, include an iid basis coefficient term for residual correlation
@@ -807,6 +874,7 @@ dfosr_ind = function(Y, tau, X = NULL, K = NULL,
                      use_dynamic_reg = TRUE,
                      nsave = 1000, nburn = 1000, nskip = 3,
                      mcmc_params = list("beta", "fk", "alpha"),
+                     X_Tp1 = NULL,
                      use_obs_SV = FALSE,
                      includeBasisInnovation = FALSE,
                      computeDIC = TRUE){
@@ -887,6 +955,21 @@ dfosr_ind = function(Y, tau, X = NULL, K = NULL,
 
   # Identify the dynamic/non-dynamic components:
   if(p > 1 && !use_dynamic_reg) diag(kfas_model$R[,,1])[-1] = 0
+
+  # Forecasting setup and checks:
+  if(!is.na(match('Yfore', mcmc_params))){
+    forecasting = TRUE # useful
+
+    # Check the forecasting design points:
+    if(is.null(X_Tp1)) X_Tp1 = 1
+    if(length(X_Tp1) != p)
+      stop("Dimension of predictor X_Tp1 for forecasting must align with alpha;
+           try including/excluding an intercept or omit 'Yfore' from the mcmc_params list")
+    X_Tp1 = matrix(X_Tp1, ncol = p)
+
+    # Storage for the forecast estimate and distribution:
+    alpha_fore_hat = alpha_fore = matrix(0, nrow = p, ncol = K)
+  } else forecasting = FALSE
   #----------------------------------------------------------------------------
   # Overall mean term (and T x K case)
   mu_k = as.matrix(colMeans(Beta)); mu_tk = matrix(rep(mu_k, each =  T), nrow = T)
@@ -992,6 +1075,7 @@ dfosr_ind = function(Y, tau, X = NULL, K = NULL,
   if(!is.na(match('sigma_et', mcmc_params)) || computeDIC) post.sigma_et = array(NA, c(nsave, T))
   if(!is.na(match('Yhat', mcmc_params)) || computeDIC) post.Yhat = array(NA, c(nsave, T, m))
   if(!is.na(match('Ypred', mcmc_params))) post.Ypred = array(NA, c(nsave, T, m))
+  if(forecasting) {post.Yfore = post.Yfore_hat = array(NA, c(nsave, m))}
   if(computeDIC) post_loglike = numeric(nsave)
 
   # Total number of MCMC simulations:
@@ -1074,7 +1158,34 @@ dfosr_ind = function(Y, tau, X = NULL, K = NULL,
 
       # Conditional mean from regression equation:
       Beta[,k] = mu_k[k] + rowSums(X*alpha.arr[,,k])
+
+      # Sample from the forecasting distribution, if desired:
+      if(forecasting && (nsi > nburn)){ # Only need to compute after burnin
+        # Evolution matrix: assume diagonal
+        evol_diag = diag(as.matrix(kfas_model$T[,,T-1]))
+
+        # Evolution error SD: assume diagonal
+        evol_sd_diag = sqrt(diag(as.matrix(kfas_model$R[,,1]))*diag(as.matrix(kfas_model$Q[,,T-1])))
+
+        # Point forecasting estimate:
+        alpha_fore_hat[,k] = evol_diag*alpha.arr[T,,k]
+
+        # Sample from forecasting distribution:
+        alpha_fore[,k] = alpha_fore_hat[,k] + rnorm(n = p, mean = 0, sd = evol_sd_diag)
+      }
     }
+
+    # Update the forecasting terms:
+    if(forecasting){
+      # Factors:
+      Beta_fore_hat = mu_k + matrix(X_Tp1%*%alpha_fore_hat)
+      Beta_fore = mu_k + matrix(X_Tp1%*%alpha_fore)
+
+      # Curves:
+      Yfore_hat = Fmat%*%Beta_fore_hat
+      Yfore = Fmat%*%Beta_fore + sigma_et[T]*rnorm(n = m)
+    }
+
     # Store this term:
     BetaPsit = tcrossprod(Beta,Psi)
     #----------------------------------------------------------------------------
@@ -1286,6 +1397,7 @@ dfosr_ind = function(Y, tau, X = NULL, K = NULL,
         if(!is.na(match('sigma_et', mcmc_params)) || computeDIC) post.sigma_et[isave,] = sigma_et
         if(!is.na(match('Yhat', mcmc_params)) || computeDIC) post.Yhat[isave,,] = Btheta
         if(!is.na(match('Ypred', mcmc_params))) post.Ypred[isave,,] = rnorm(n = T*m, mean = matrix(Btheta), sd = rep(sigma_et,m))
+        if(forecasting) {post.Yfore[isave,] = Yfore; post.Yfore_hat[isave,] = Yfore_hat}
         if(computeDIC) post_loglike[isave] = sum(dnorm(matrix(Yna), mean = matrix(Btheta), sd = rep(sigma_et,m), log = TRUE), na.rm = TRUE)
 
         # And reset the skip counter:
@@ -1302,6 +1414,7 @@ dfosr_ind = function(Y, tau, X = NULL, K = NULL,
   if(!is.na(match('sigma_et', mcmc_params))) mcmc_output$sigma_et = post.sigma_et
   if(!is.na(match('Yhat', mcmc_params))) mcmc_output$Yhat = post.Yhat
   if(!is.na(match('Ypred', mcmc_params))) mcmc_output$Ypred = post.Ypred
+  if(forecasting) {mcmc_output$Yfore = post.Yfore; mcmc_output$Yfore_hat = post.Yfore_hat}
 
   if(computeDIC){
     # Log-likelihood evaluated at posterior means:
@@ -1349,7 +1462,10 @@ dfosr_ind = function(Y, tau, X = NULL, K = NULL,
 #' \item "sigma_et" (observation error SD; possibly dynamic)
 #' \item "Yhat" (fitted values)
 #' \item "Ypred" (posterior predictive values)
+#' \item "Yfore" (one-step forecast; includes the estimate and the distribution)
 #' }
+#' @param X_Tp1 the \code{p x 1} matrix of predictors at the forecasting time point \code{T + 1};
+#' if \code{NULL}, set to an intercept
 #' @param use_obs_SV logical; when TRUE, include a stochastic volatility model
 #' for the observation error variance
 #' @param includeBasisInnovation logical; when TRUE, include an iid basis coefficient term for residual correlation
@@ -1364,6 +1480,7 @@ dfosr_rw = function(Y, tau, X = NULL, K = NULL,
                     use_dynamic_reg = TRUE,
                     nsave = 1000, nburn = 1000, nskip = 3,
                     mcmc_params = list("beta", "fk", "alpha"),
+                    X_Tp1 = NULL,
                     use_obs_SV = FALSE,
                     includeBasisInnovation = FALSE,
                     computeDIC = TRUE){
@@ -1444,6 +1561,21 @@ dfosr_rw = function(Y, tau, X = NULL, K = NULL,
 
   # Identify the dynamic/non-dynamic components:
   if(p > 1 && !use_dynamic_reg) diag(kfas_model$R[,,1])[-1] = 0
+
+  # Forecasting setup and checks:
+  if(!is.na(match('Yfore', mcmc_params))){
+    forecasting = TRUE # useful
+
+    # Check the forecasting design points:
+    if(is.null(X_Tp1)) X_Tp1 = 1
+    if(length(X_Tp1) != p)
+      stop("Dimension of predictor X_Tp1 for forecasting must align with alpha;
+           try including/excluding an intercept or omit 'Yfore' from the mcmc_params list")
+    X_Tp1 = matrix(X_Tp1, ncol = p)
+
+    # Storage for the forecast estimate and distribution:
+    alpha_fore_hat = alpha_fore = matrix(0, nrow = p, ncol = K)
+  } else forecasting = FALSE
   #----------------------------------------------------------------------------
   # Evolution matrix (must be identity for static components)
   G_alpha = diag(p) # Replace the intercept terms as needed
@@ -1545,6 +1677,7 @@ dfosr_rw = function(Y, tau, X = NULL, K = NULL,
   if(!is.na(match('sigma_et', mcmc_params)) || computeDIC) post.sigma_et = array(NA, c(nsave, T))
   if(!is.na(match('Yhat', mcmc_params)) || computeDIC) post.Yhat = array(NA, c(nsave, T, m))
   if(!is.na(match('Ypred', mcmc_params))) post.Ypred = array(NA, c(nsave, T, m))
+  if(forecasting) {post.Yfore = post.Yfore_hat = array(NA, c(nsave, m))}
   if(computeDIC) post_loglike = numeric(nsave)
 
   # Total number of MCMC simulations:
@@ -1627,7 +1760,34 @@ dfosr_rw = function(Y, tau, X = NULL, K = NULL,
 
       # Conditional mean from regression equation:
       Beta[,k] = rowSums(X*alpha.arr[,,k])
+
+      # Sample from the forecasting distribution, if desired:
+      if(forecasting && (nsi > nburn)){ # Only need to compute after burnin
+        # Evolution matrix: assume diagonal
+        evol_diag = diag(as.matrix(kfas_model$T[,,T-1]))
+
+        # Evolution error SD: assume diagonal
+        evol_sd_diag = sqrt(diag(as.matrix(kfas_model$R[,,1]))*diag(as.matrix(kfas_model$Q[,,T-1])))
+
+        # Point forecasting estimate:
+        alpha_fore_hat[,k] = evol_diag*alpha.arr[T,,k]
+
+        # Sample from forecasting distribution:
+        alpha_fore[,k] = alpha_fore_hat[,k] + rnorm(n = p, mean = 0, sd = evol_sd_diag)
+      }
     }
+
+    # Update the forecasting terms:
+    if(forecasting){
+      # Factors:
+      Beta_fore_hat = matrix(X_Tp1%*%alpha_fore_hat)
+      Beta_fore = matrix(X_Tp1%*%alpha_fore)
+
+      # Curves:
+      Yfore_hat = Fmat%*%Beta_fore_hat
+      Yfore = Fmat%*%Beta_fore + sigma_et[T]*rnorm(n = m)
+    }
+
     # Store this term:
     BetaPsit = tcrossprod(Beta,Psi)
     #----------------------------------------------------------------------------
@@ -1818,6 +1978,7 @@ dfosr_rw = function(Y, tau, X = NULL, K = NULL,
         if(!is.na(match('sigma_et', mcmc_params)) || computeDIC) post.sigma_et[isave,] = sigma_et
         if(!is.na(match('Yhat', mcmc_params)) || computeDIC) post.Yhat[isave,,] = Btheta # + sigma_e*rnorm(length(Y))
         if(!is.na(match('Ypred', mcmc_params))) post.Ypred[isave,,] = rnorm(n = T*m, mean = matrix(Btheta), sd = rep(sigma_et,m))
+        if(forecasting) {post.Yfore[isave,] = Yfore; post.Yfore_hat[isave,] = Yfore_hat}
         if(computeDIC) post_loglike[isave] = sum(dnorm(matrix(Yna), mean = matrix(Btheta), sd = rep(sigma_et,m), log = TRUE), na.rm = TRUE)
 
         # And reset the skip counter:
@@ -1833,6 +1994,7 @@ dfosr_rw = function(Y, tau, X = NULL, K = NULL,
   if(!is.na(match('sigma_et', mcmc_params))) mcmc_output$sigma_et = post.sigma_et
   if(!is.na(match('Yhat', mcmc_params))) mcmc_output$Yhat = post.Yhat
   if(!is.na(match('Ypred', mcmc_params))) mcmc_output$Ypred = post.Ypred
+  if(forecasting) {mcmc_output$Yfore = post.Yfore; mcmc_output$Yfore_hat = post.Yfore_hat}
 
   if(computeDIC){
     # Log-likelihood evaluated at posterior means:
@@ -1883,7 +2045,10 @@ dfosr_rw = function(Y, tau, X = NULL, K = NULL,
 #' \item "sigma_et" (observation error SD; possibly dynamic)
 #' \item "Yhat" (fitted values)
 #' \item "Ypred" (posterior predictive values)
+#' \item "Yfore" (one-step forecast; includes the estimate and the distribution)
 #' }
+#' @param X_Tp1 the \code{p x 1} matrix of predictors at the forecasting time point \code{T + 1};
+#' if \code{NULL}, set to an intercept
 #' @param use_obs_SV logical; when TRUE, include a stochastic volatility model
 #' for the observation error variance
 #' @param includeBasisInnovation logical; when TRUE, include an iid basis coefficient term for residual correlation
@@ -1895,12 +2060,13 @@ dfosr_rw = function(Y, tau, X = NULL, K = NULL,
 #'
 #' @import  KFAS truncdist
 dfosr_ar = function(Y, tau, X = NULL, K = NULL,
-                      use_dynamic_reg = TRUE,
-                      nsave = 1000, nburn = 1000, nskip = 2,
-                      mcmc_params = list("beta", "fk", "alpha", "mu_k", "ar_phi"),
-                      use_obs_SV = FALSE,
-                      includeBasisInnovation = FALSE,
-                      computeDIC = TRUE){
+                    use_dynamic_reg = TRUE,
+                    nsave = 1000, nburn = 1000, nskip = 2,
+                    mcmc_params = list("beta", "fk", "alpha", "mu_k", "ar_phi"),
+                    X_Tp1 = NULL,
+                    use_obs_SV = FALSE,
+                    includeBasisInnovation = FALSE,
+                    computeDIC = TRUE){
   # Some options (for now):
   sample_nu = TRUE # Sample DF parameter, or fix at nu=3?
   sample_a1a2 = TRUE # Sample a1, a2, or fix at a1=2, a2=3?
@@ -1978,6 +2144,21 @@ dfosr_ar = function(Y, tau, X = NULL, K = NULL,
 
   # Identify the dynamic/non-dynamic components:
   if(p > 1 && !use_dynamic_reg) diag(kfas_model$R[,,1])[-1] = 0
+
+  # Forecasting setup and checks:
+  if(!is.na(match('Yfore', mcmc_params))){
+    forecasting = TRUE # useful
+
+    # Check the forecasting design points:
+    if(is.null(X_Tp1)) X_Tp1 = 1
+    if(length(X_Tp1) != p)
+      stop("Dimension of predictor X_Tp1 for forecasting must align with alpha;
+           try including/excluding an intercept or omit 'Yfore' from the mcmc_params list")
+    X_Tp1 = matrix(X_Tp1, ncol = p)
+
+    # Storage for the forecast estimate and distribution:
+    alpha_fore_hat = alpha_fore = matrix(0, nrow = p, ncol = K)
+  } else forecasting = FALSE
   #----------------------------------------------------------------------------
   # Overall mean term (and T x K case)
   mu_k = as.matrix(colMeans(Beta)); mu_tk = matrix(rep(mu_k, each =  T), nrow = T)
@@ -2098,6 +2279,7 @@ dfosr_ar = function(Y, tau, X = NULL, K = NULL,
   if(!is.na(match('ar_phi', mcmc_params))) post.ar_phi = array(NA, c(nsave, K))
   if(!is.na(match('Yhat', mcmc_params)) || computeDIC) post.Yhat = array(NA, c(nsave, T, m))
   if(!is.na(match('Ypred', mcmc_params))) post.Ypred = array(NA, c(nsave, T, m))
+  if(forecasting) {post.Yfore = post.Yfore_hat = array(NA, c(nsave, m))}
   if(computeDIC) post_loglike = numeric(nsave)
 
   # Total number of MCMC simulations:
@@ -2183,7 +2365,34 @@ dfosr_ar = function(Y, tau, X = NULL, K = NULL,
 
       # Conditional mean from regression equation:
       Beta[,k] = mu_k[k] + rowSums(X*alpha.arr[,,k])
+
+      # Sample from the forecasting distribution, if desired:
+      if(forecasting && (nsi > nburn)){ # Only need to compute after burnin
+        # Evolution matrix: assume diagonal
+        evol_diag = diag(as.matrix(kfas_model$T[,,T-1]))
+
+        # Evolution error SD: assume diagonal
+        evol_sd_diag = sqrt(diag(as.matrix(kfas_model$R[,,1]))*diag(as.matrix(kfas_model$Q[,,T-1])))
+
+        # Point forecasting estimate:
+        alpha_fore_hat[,k] = evol_diag*alpha.arr[T,,k]
+
+        # Sample from forecasting distribution:
+        alpha_fore[,k] = alpha_fore_hat[,k] + rnorm(n = p, mean = 0, sd = evol_sd_diag)
+      }
     }
+
+    # Update the forecasting terms:
+    if(forecasting){
+      # Factors:
+      Beta_fore_hat = mu_k + matrix(X_Tp1%*%alpha_fore_hat)
+      Beta_fore = mu_k + matrix(X_Tp1%*%alpha_fore)
+
+      # Curves:
+      Yfore_hat = Fmat%*%Beta_fore_hat
+      Yfore = Fmat%*%Beta_fore + sigma_et[T]*rnorm(n = m)
+    }
+
     # Store this term:
     BetaPsit = tcrossprod(Beta,Psi)
     #----------------------------------------------------------------------------
@@ -2418,6 +2627,7 @@ dfosr_ar = function(Y, tau, X = NULL, K = NULL,
         if(!is.na(match('ar_phi', mcmc_params))) post.ar_phi[isave,] = ar_int
         if(!is.na(match('Yhat', mcmc_params)) || computeDIC) post.Yhat[isave,,] = Btheta # + sigma_e*rnorm(length(Y))
         if(!is.na(match('Ypred', mcmc_params))) post.Ypred[isave,,] = rnorm(n = T*m, mean = matrix(Btheta), sd = rep(sigma_et,m))
+        if(forecasting) {post.Yfore[isave,] = Yfore; post.Yfore_hat[isave,] = Yfore_hat}
         if(computeDIC) post_loglike[isave] = sum(dnorm(matrix(Yna), mean = matrix(Btheta), sd = rep(sigma_et,m), log = TRUE), na.rm = TRUE)
 
         # And reset the skip counter:
@@ -2435,6 +2645,7 @@ dfosr_ar = function(Y, tau, X = NULL, K = NULL,
   if(!is.na(match('ar_phi', mcmc_params))) mcmc_output$ar_phi = post.ar_phi
   if(!is.na(match('Yhat', mcmc_params))) mcmc_output$Yhat = post.Yhat
   if(!is.na(match('Ypred', mcmc_params))) mcmc_output$Ypred = post.Ypred
+  if(forecasting) {mcmc_output$Yfore = post.Yfore; mcmc_output$Yfore_hat = post.Yfore_hat}
 
   if(computeDIC){
     # Log-likelihood evaluated at posterior means:
@@ -2485,8 +2696,10 @@ dfosr_ar = function(Y, tau, X = NULL, K = NULL,
 #' \item "ar_phi" (AR coefficients for each k under AR(1) model)
 #' \item "sigma_et" (observation error SD; possibly dynamic)
 #' \item "Yhat" (fitted values)
-#' \item "Ypred" (posterior predictive values)
+#' \item "Yfore" (one-step forecast; includes the estimate and the distribution)
 #' }
+#' @param X_Tp1 the \code{p x 1} matrix of predictors at the forecasting time point \code{T + 1};
+#' if \code{NULL}, set to an intercept
 #' @param use_obs_SV logical; when TRUE, include a stochastic volatility model
 #' for the observation error variance
 #' @param computeDIC logical; if TRUE, compute the deviance information criterion \code{DIC}
@@ -2502,6 +2715,7 @@ dfosr_basis_ar = function(Y, tau, X = NULL,
                           use_fpca = TRUE, use_shrinkage_priors = FALSE,
                           nsave = 1000, nburn = 1000, nskip = 2,
                           mcmc_params = list("beta", "fk", "alpha", "mu_k", "ar_phi"),
+                          X_Tp1 = NULL,
                           use_obs_SV = FALSE,
                           computeDIC = TRUE){
   #----------------------------------------------------------------------------
@@ -2572,6 +2786,21 @@ dfosr_basis_ar = function(Y, tau, X = NULL,
 
   # Identify the dynamic/non-dynamic components:
   if(p > 1 && !use_dynamic_reg) diag(kfas_model$R[,,1])[-1] = 0
+
+  # Forecasting setup and checks:
+  if(!is.na(match('Yfore', mcmc_params))){
+    forecasting = TRUE # useful
+
+    # Check the forecasting design points:
+    if(is.null(X_Tp1)) X_Tp1 = 1
+    if(length(X_Tp1) != p)
+      stop("Dimension of predictor X_Tp1 for forecasting must align with alpha;
+           try including/excluding an intercept or omit 'Yfore' from the mcmc_params list")
+    X_Tp1 = matrix(X_Tp1, ncol = p)
+
+    # Storage for the forecast estimate and distribution:
+    alpha_fore_hat = alpha_fore = matrix(0, nrow = p, ncol = K)
+  } else forecasting = FALSE
   #----------------------------------------------------------------------------
   # Overall mean term (and T x K case)
   mu_k = as.matrix(colMeans(Beta)); mu_tk = matrix(rep(mu_k, each =  T), nrow = T)
@@ -2700,6 +2929,7 @@ dfosr_basis_ar = function(Y, tau, X = NULL,
   if(!is.na(match('ar_phi', mcmc_params))) post.ar_phi = array(NA, c(nsave, K))
   if(!is.na(match('Yhat', mcmc_params)) || computeDIC) post.Yhat = array(NA, c(nsave, T, m))
   if(!is.na(match('Ypred', mcmc_params))) post.Ypred = array(NA, c(nsave, T, m))
+  if(forecasting) {post.Yfore = post.Yfore_hat = array(NA, c(nsave, m))}
   if(computeDIC) post_loglike = numeric(nsave)
 
   # Total number of MCMC simulations:
@@ -2766,6 +2996,32 @@ dfosr_basis_ar = function(Y, tau, X = NULL,
 
       # Conditional mean from regression equation:
       Beta[,k] = mu_k[k] + rowSums(X*alpha.arr[,,k])
+
+      # Sample from the forecasting distribution, if desired:
+      if(forecasting && (nsi > nburn)){ # Only need to compute after burnin
+        # Evolution matrix: assume diagonal
+        evol_diag = diag(as.matrix(kfas_model$T[,,T-1]))
+
+        # Evolution error SD: assume diagonal
+        evol_sd_diag = sqrt(diag(as.matrix(kfas_model$R[,,1]))*diag(as.matrix(kfas_model$Q[,,T-1])))
+
+        # Point forecasting estimate:
+        alpha_fore_hat[,k] = evol_diag*alpha.arr[T,,k]
+
+        # Sample from forecasting distribution:
+        alpha_fore[,k] = alpha_fore_hat[,k] + rnorm(n = p, mean = 0, sd = evol_sd_diag)
+      }
+    }
+
+    # Update the forecasting terms:
+    if(forecasting){
+      # Factors:
+      Beta_fore_hat = mu_k + matrix(X_Tp1%*%alpha_fore_hat)
+      Beta_fore = mu_k + matrix(X_Tp1%*%alpha_fore)
+
+      # Curves:
+      Yfore_hat = Fmat%*%Beta_fore_hat
+      Yfore = Fmat%*%Beta_fore + sigma_et[T]*rnorm(n = m)
     }
     #----------------------------------------------------------------------------
     # Step 4: Sample the basis terms (if desired)
@@ -2957,6 +3213,7 @@ dfosr_basis_ar = function(Y, tau, X = NULL,
         if(!is.na(match('ar_phi', mcmc_params))) post.ar_phi[isave,] = ar_int
         if(!is.na(match('Yhat', mcmc_params)) || computeDIC) post.Yhat[isave,,] = Btheta
         if(!is.na(match('Ypred', mcmc_params))) post.Ypred[isave,,] = rnorm(n = T*m, mean = matrix(Btheta), sd = rep(sigma_et,m))
+        if(forecasting) {post.Yfore[isave,] = Yfore; post.Yfore_hat[isave,] = Yfore_hat}
         if(computeDIC) post_loglike[isave] = sum(dnorm(matrix(Yna), mean = matrix(Btheta), sd = rep(sigma_et,m), log = TRUE), na.rm = TRUE)
 
         # And reset the skip counter:
@@ -2974,6 +3231,7 @@ dfosr_basis_ar = function(Y, tau, X = NULL,
   if(!is.na(match('ar_phi', mcmc_params))) mcmc_output$ar_phi = post.ar_phi
   if(!is.na(match('Yhat', mcmc_params))) mcmc_output$Yhat = post.Yhat
   if(!is.na(match('Ypred', mcmc_params))) mcmc_output$Ypred = post.Ypred
+  if(forecasting) {mcmc_output$Yfore = post.Yfore; mcmc_output$Yfore_hat = post.Yfore_hat}
 
   if(computeDIC){
     # Log-likelihood evaluated at posterior means:

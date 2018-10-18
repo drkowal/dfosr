@@ -53,8 +53,11 @@ If \code{Tm} is large, then storing all posterior samples for \code{Yhat} or \co
 }
 \examples{
 \dontrun{
-# Simulate some data:
-sim_data = simulate_dfosr(T = 100, m = 20, p_0 = 2, p_1 = 2, use_dynamic_reg = FALSE)
+# Simulate some data (w/ NAs):
+sim_data = simulate_dfosr(T = 100, m = 20,
+                          p_0 = 2, p_1 = 2,
+                          use_dynamic_reg = FALSE,
+                          prop_missing = 0.5)
 Y = sim_data$Y; X = sim_data$X; tau = sim_data$tau
 T = nrow(Y); m = ncol(Y); p = ncol(X) # Dimensions
 

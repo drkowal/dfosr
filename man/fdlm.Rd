@@ -6,7 +6,7 @@
 \usage{
 fdlm(Y, tau, K = NULL, factor_model = "RW", nsave = 1000, nburn = 1000,
   nskip = 3, mcmc_params = list("beta", "fk"), use_obs_SV = FALSE,
-  includeBasisInnovation = FALSE, computeDIC = TRUE)
+  X_Tp1 = NULL, includeBasisInnovation = FALSE, computeDIC = TRUE)
 }
 \arguments{
 \item{Y}{the \code{T x m} data observation matrix, where \code{T} is the number of time points and \code{m} is the number of observation points (\code{NA}s allowed)}
@@ -39,10 +39,14 @@ must be one or more of
 \item "sigma_et" (observation error SD; possibly dynamic)
 \item "Yhat" (fitted values)
 \item "Ypred" (posterior predictive values)
+\item "Yfore" (one-step forecast; includes the estimate and the distribution)
 }}
 
 \item{use_obs_SV}{logical; when TRUE, include a stochastic volatility model
 for the observation error variance}
+
+\item{X_Tp1}{the \code{p x 1} matrix of predictors at the forecasting time point \code{T + 1};
+if \code{NULL}, set to an intercept}
 
 \item{includeBasisInnovation}{logical; when TRUE, include an iid basis coefficient term for residual correlation
 (i.e., the idiosyncratic error term for a factor model on the full basis matrix)}
@@ -62,8 +66,9 @@ for the factors, and a random walk model for the factors.
 If \code{Tm} is large, then storing all posterior samples for \code{Yhat} or \code{Ypred}, which are \code{nsave x T x m},  may be inefficient
 }
 \examples{
-# Simulate some data:
-sim_data = simulate_dfosr(T = 100, m = 20)
+# Simulate some data (w/o predictors):
+sim_data = simulate_dfosr(T = 100, m = 20,
+                          p_0 = 0, p_1 = 0)
 Y = sim_data$Y; tau = sim_data$tau
 T = nrow(Y); m = ncol(Y); # Dimensions
 
@@ -85,5 +90,6 @@ plot_fitted(y = Y[i,],
             postY = out$Ypred[,i,],
             y_true = sim_data$Y_true[i,],
             t01 = tau)
+
 
 }
