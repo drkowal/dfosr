@@ -728,25 +728,27 @@ fosr_ar = function(Y, tau, X = NULL, K = NULL,
 #' # Plot a dynamic regression coefficient function
 #' j = 3 # choose a predictor
 #' post_alpha_tilde_j = get_post_alpha_tilde(out$fk, out$alpha[,,j,])
+#'
 #' # Posterior mean:
 #' alpha_tilde_j_pm = colMeans(post_alpha_tilde_j)
-#' # Lower 95% credible interval:
+#'
+#' # Lower and Upper 95% credible intervals:
 #' alpha_tilde_j_lower = apply(post_alpha_tilde_j, 2:3, quantile, c(0.05/2))
-#' # Upper 95% credible interval:
 #' alpha_tilde_j_upper = apply(post_alpha_tilde_j, 2:3, quantile, c(1 - 0.05/2))
-#' # Lower pointwise interval:
+#'
+#' # Plot lower pointwise interval:
 #' filled.contour(1:T, tau, alpha_tilde_j_lower,
 #'                zlim = range(alpha_tilde_j_lower, alpha_tilde_j_upper),
 #'                color = terrain.colors,
 #'                xlab = 'Time', ylab = expression(tau),
 #'                main = paste('Lower 95% Credible Intervals, j =',j))
-#' # Posterior Mean:
+#' # Plot posterior Mean:
 #' filled.contour(1:T, tau, alpha_tilde_j_pm,
 #'                zlim = range(alpha_tilde_j_lower, alpha_tilde_j_upper),
 #'                color = terrain.colors,
 #'                xlab = 'Time', ylab = expression(tau),
 #'                main = paste('Posterior Mean, j =',j))
-#' # Upper pointwise interval:
+#' # Plot upper pointwise interval:
 #' filled.contour(1:T, tau, sim_data$alpha_tilde_true[,j,],
 #'                zlim = range(alpha_tilde_j_lower, alpha_tilde_j_upper),
 #'                color = terrain.colors,
@@ -760,12 +762,14 @@ fosr_ar = function(Y, tau, X = NULL, K = NULL,
 #'                main = paste('True regression coefficients, j =',j))
 #'
 #' # Verify by plotting at two time slices:
-#' t1 = ceiling(0.2*T); t2 = ceiling(0.8*T)
+#' t1 = ceiling(0.2*T); # Time t1
 #' plot_curve(post_f = post_alpha_tilde_j[,t1,],
 #'            tau = tau,
 #'            main = paste('Predictor j =',j,'at time t =',t1))
 #' # Add the true regression coefficient function:
 #' lines(tau, sim_data$alpha_tilde_true[t1,j,], lwd=8, col='black', lty=6)
+#'
+#' t2 = ceiling(0.8*T) # Time t2
 #' plot_curve(post_f = post_alpha_tilde_j[,t2,],
 #'            tau = tau,
 #'            main = paste('Predictor j =',j,'at time t =',t2))

@@ -745,30 +745,33 @@ blockDiag = function(Amat, nrep){
 #' @param tau \code{m x 1} vector of observation points
 #' @param alpha confidence level for the bands
 #' @param include_joint logical; if TRUE, include joint bands (as well as pointwise)
-#' @param main text for title plot
+#' @param main title text (optional)
+#' @param ylim range of y-axis (optional)
 #'
 #' @importFrom grDevices dev.new
 #' @importFrom graphics abline lines par plot polygon
 #' @import coda
 #'
 #' @export
-plot_curve = function(post_f, tau = NULL, alpha = 0.05, include_joint = TRUE, main = "Posterior Mean and Credible Bands"){
+plot_curve = function(post_f, tau = NULL, alpha = 0.05, include_joint = TRUE,
+                      main = "Posterior Mean and Credible Bands", ylim = NULL){
 
   Ns = nrow(post_f); m = ncol(post_f)
 
   if(is.null(tau)) tau = 1:m
 
-  par(mfrow = c(1, 1), mai = c(1, 1, 1, 1))
+  #par(mfrow = c(1, 1), mai = c(1, 1, 1, 1))
 
   # Pointwise intervals:
-  dcip = dcib = HPDinterval(as.mcmc(post_f), prob = 1 - alpha);
+  #dcip = dcib = HPDinterval(as.mcmc(post_f), prob = 1 - alpha);
+  dcip = dcib = t(apply(post_f, 2, quantile, c(alpha/2, 1 - alpha/2)));
 
   # Joint intervals, if necessary:
   if(include_joint) dcib = credBands(post_f, alpha = alpha)
 
   f_hat = colMeans(post_f)
 
-  plot(tau, f_hat, type = "n", ylim = range(dcib, dcip, na.rm = TRUE),
+  plot(tau, f_hat, type = "n", ylim = range(dcib, dcip, ylim, na.rm = TRUE),
        xlab = expression(tau), ylab = "", main = main,
        cex.lab = 1.5, cex.main = 1.5, cex.axis = 1.5)
   if(include_joint) polygon(c(tau, rev(tau)), c(dcib[, 2], rev(dcib[, 1])), col = "gray50",
