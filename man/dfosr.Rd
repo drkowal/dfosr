@@ -39,9 +39,9 @@ i.e., save every (nskip + 1)th draw}
 \item{mcmc_params}{named list of parameters for which we store the MCMC output;
 must be one or more of
 \itemize{
-\item "beta" (factors)
+\item "beta" (dynamic factors)
 \item "fk" (loading curves)
-\item "alpha" (regression coefficients)
+\item "alpha" (regression coefficients; possibly dynamic)
 \item "mu_k" (intercept term for factor k)
 \item "ar_phi" (AR coefficients for each k under AR(1) model)
 \item "sigma_et" (observation error SD; possibly dynamic)

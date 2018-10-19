@@ -33,7 +33,7 @@ i.e., save every (nskip + 1)th draw}
 \item{mcmc_params}{named list of parameters for which we store the MCMC output;
 must be one or more of
 \itemize{
-\item "beta" (factors)
+\item "beta" (dynamic factors)
 \item "fk" (loading curves)
 \item "mu_k" (intercept)
 \item "sigma_et" (observation error SD; possibly dynamic)

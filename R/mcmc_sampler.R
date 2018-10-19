@@ -24,7 +24,7 @@
 #' @param mcmc_params named list of parameters for which we store the MCMC output;
 #' must be one or more of
 #' \itemize{
-#' \item "beta" (factors)
+#' \item "beta" (dynamic factors)
 #' \item "fk" (loading curves)
 #' \item "mu_k" (intercept)
 #' \item "sigma_et" (observation error SD; possibly dynamic)
@@ -207,6 +207,10 @@ fosr = function(Y, tau, X = NULL, K = NULL,
 
   # Rescale observation points to [0,1]
   tau01 = apply(tau, 2, function(x) (x - min(x))/(max(x) - min(x)))
+
+  # Rescale by observation SD (and correct parameters later):
+  sdY = sd(Y, na.rm=TRUE);
+  Y = Y/sdY;
   #----------------------------------------------------------------------------
   # Initialize the main terms:
 
@@ -504,13 +508,14 @@ fosr = function(Y, tau, X = NULL, K = NULL,
     computeTimeRemaining(nsi, timer0, nstot, nrep = 1000)
   }
 
-  if(!is.na(match('beta', mcmc_params))) mcmc_output$beta = post.beta
+  # Store the results (and correct for rescaling by sdY):
+  if(!is.na(match('beta', mcmc_params))) mcmc_output$beta = post.beta*sdY
   if(!is.na(match('fk', mcmc_params))) mcmc_output$fk = post.fk
-  if(!is.na(match('alpha', mcmc_params))) mcmc_output$alpha = post.alpha
-  if(!is.na(match('sigma_e', mcmc_params))) mcmc_output$sigma_e = post.sigma_e
-  if(!is.na(match('sigma_g', mcmc_params))) mcmc_output$sigma_g = post.sigma_g
-  if(!is.na(match('Yhat', mcmc_params))) mcmc_output$Yhat = post.Yhat
-  if(!is.na(match('Ypred', mcmc_params))) mcmc_output$Ypred = post.Ypred
+  if(!is.na(match('alpha', mcmc_params))) mcmc_output$alpha = post.alpha*sdY
+  if(!is.na(match('sigma_e', mcmc_params))) mcmc_output$sigma_e = post.sigma_e*sdY
+  if(!is.na(match('sigma_g', mcmc_params))) mcmc_output$sigma_g = post.sigma_g*sdY
+  if(!is.na(match('Yhat', mcmc_params))) mcmc_output$Yhat = post.Yhat*sdY
+  if(!is.na(match('Ypred', mcmc_params))) mcmc_output$Ypred = post.Ypred*sdY
 
   if(computeDIC){
     # Log-likelihood evaluated at posterior means:
@@ -550,7 +555,7 @@ fosr = function(Y, tau, X = NULL, K = NULL,
 #' @param mcmc_params named list of parameters for which we store the MCMC output;
 #' must be one or more of
 #' \itemize{
-#' \item "beta" (factors)
+#' \item "beta" (dynamic factors)
 #' \item "fk" (loading curves)
 #' \item "alpha" (regression coefficients)
 #' \item "mu_k" (intercept term for factor k)
@@ -683,9 +688,9 @@ fosr_ar = function(Y, tau, X = NULL, K = NULL,
 #' @param mcmc_params named list of parameters for which we store the MCMC output;
 #' must be one or more of
 #' \itemize{
-#' \item "beta" (factors)
+#' \item "beta" (dynamic factors)
 #' \item "fk" (loading curves)
-#' \item "alpha" (regression coefficients)
+#' \item "alpha" (regression coefficients; possibly dynamic)
 #' \item "mu_k" (intercept term for factor k)
 #' \item "ar_phi" (AR coefficients for each k under AR(1) model)
 #' \item "sigma_et" (observation error SD; possibly dynamic)
@@ -850,9 +855,9 @@ dfosr = function(Y, tau, X = NULL, K = NULL,
 #' @param mcmc_params named list of parameters for which we store the MCMC output;
 #' must be one or more of
 #' \itemize{
-#' \item "beta" (factors)
+#' \item "beta" (dynamic factors)
 #' \item "fk" (loading curves)
-#' \item "alpha" (regression coefficients)
+#' \item "alpha" (regression coefficients; possibly dynamic)
 #' \item "mu_k" (intercept term for factor k)
 #' \item "sigma_et" (observation error SD; possibly dynamic)
 #' \item "Yhat" (fitted values)
@@ -893,6 +898,10 @@ dfosr_ind = function(Y, tau, X = NULL, K = NULL,
 
   # Rescale observation points to [0,1]
   tau01 = apply(tau, 2, function(x) (x - min(x))/(max(x) - min(x)))
+
+  # Rescale by observation SD (and correct parameters later):
+  sdY = sd(Y, na.rm=TRUE);
+  Y = Y/sdY;
   #----------------------------------------------------------------------------
   # Initialize the main terms:
 
@@ -1407,14 +1416,15 @@ dfosr_ind = function(Y, tau, X = NULL, K = NULL,
     computeTimeRemaining(nsi, timer0, nstot, nrep = 500)
   }
 
-  if(!is.na(match('beta', mcmc_params))) mcmc_output$beta = post.beta
+  # Store the results (and correct for rescaling by sdY):
+  if(!is.na(match('beta', mcmc_params))) mcmc_output$beta = post.beta*sdY
   if(!is.na(match('fk', mcmc_params))) mcmc_output$fk = post.fk
-  if(!is.na(match('alpha', mcmc_params))) mcmc_output$alpha = post.alpha
-  if(!is.na(match('mu_k', mcmc_params))) mcmc_output$mu_k = post.mu_k
-  if(!is.na(match('sigma_et', mcmc_params))) mcmc_output$sigma_et = post.sigma_et
-  if(!is.na(match('Yhat', mcmc_params))) mcmc_output$Yhat = post.Yhat
-  if(!is.na(match('Ypred', mcmc_params))) mcmc_output$Ypred = post.Ypred
-  if(forecasting) {mcmc_output$Yfore = post.Yfore; mcmc_output$Yfore_hat = post.Yfore_hat}
+  if(!is.na(match('alpha', mcmc_params))) mcmc_output$alpha = post.alpha*sdY
+  if(!is.na(match('mu_k', mcmc_params))) mcmc_output$mu_k = post.mu_k*sdY
+  if(!is.na(match('sigma_et', mcmc_params))) mcmc_output$sigma_et = post.sigma_et*sdY
+  if(!is.na(match('Yhat', mcmc_params))) mcmc_output$Yhat = post.Yhat*sdY
+  if(!is.na(match('Ypred', mcmc_params))) mcmc_output$Ypred = post.Ypred*sdY
+  if(forecasting) {mcmc_output$Yfore = post.Yfore*sdY; mcmc_output$Yfore_hat = post.Yfore_hat*sdY}
 
   if(computeDIC){
     # Log-likelihood evaluated at posterior means:
@@ -1455,9 +1465,9 @@ dfosr_ind = function(Y, tau, X = NULL, K = NULL,
 #' @param mcmc_params named list of parameters for which we store the MCMC output;
 #' must be one or more of
 #' \itemize{
-#' \item "beta" (factors)
+#' \item "beta" (dynamic factors)
 #' \item "fk" (loading curves)
-#' \item "alpha" (regression coefficients)
+#' \item "alpha" (regression coefficients; possibly dynamic)
 #' \item "mu_k" (intercept term for factor k)
 #' \item "sigma_et" (observation error SD; possibly dynamic)
 #' \item "Yhat" (fitted values)
@@ -1499,6 +1509,10 @@ dfosr_rw = function(Y, tau, X = NULL, K = NULL,
 
   # Rescale observation points to [0,1]
   tau01 = apply(tau, 2, function(x) (x - min(x))/(max(x) - min(x)))
+
+  # Rescale by observation SD (and correct parameters later):
+  sdY = sd(Y, na.rm=TRUE);
+  Y = Y/sdY;
   #----------------------------------------------------------------------------
   # Initialize the main terms:
 
@@ -1988,13 +2002,14 @@ dfosr_rw = function(Y, tau, X = NULL, K = NULL,
     computeTimeRemaining(nsi, timer0, nstot, nrep = 500)
   }
 
-  if(!is.na(match('beta', mcmc_params))) mcmc_output$beta = post.beta
+  # Store the results (and correct for rescaling by sdY):
+  if(!is.na(match('beta', mcmc_params))) mcmc_output$beta = post.beta*sdY
   if(!is.na(match('fk', mcmc_params))) mcmc_output$fk = post.fk
-  if(!is.na(match('alpha', mcmc_params))) mcmc_output$alpha = post.alpha
-  if(!is.na(match('sigma_et', mcmc_params))) mcmc_output$sigma_et = post.sigma_et
-  if(!is.na(match('Yhat', mcmc_params))) mcmc_output$Yhat = post.Yhat
-  if(!is.na(match('Ypred', mcmc_params))) mcmc_output$Ypred = post.Ypred
-  if(forecasting) {mcmc_output$Yfore = post.Yfore; mcmc_output$Yfore_hat = post.Yfore_hat}
+  if(!is.na(match('alpha', mcmc_params))) mcmc_output$alpha = post.alpha*sdY
+  if(!is.na(match('sigma_et', mcmc_params))) mcmc_output$sigma_et = post.sigma_et*sdY
+  if(!is.na(match('Yhat', mcmc_params))) mcmc_output$Yhat = post.Yhat*sdY
+  if(!is.na(match('Ypred', mcmc_params))) mcmc_output$Ypred = post.Ypred*sdY
+  if(forecasting) {mcmc_output$Yfore = post.Yfore*sdY; mcmc_output$Yfore_hat = post.Yfore_hat*sdY}
 
   if(computeDIC){
     # Log-likelihood evaluated at posterior means:
@@ -2037,9 +2052,9 @@ dfosr_rw = function(Y, tau, X = NULL, K = NULL,
 #' @param mcmc_params named list of parameters for which we store the MCMC output;
 #' must be one or more of
 #' \itemize{
-#' \item "beta" (factors)
+#' \item "beta" (dynamic factors)
 #' \item "fk" (loading curves)
-#' \item "alpha" (regression coefficients)
+#' \item "alpha" (regression coefficients; possibly dynamic)
 #' \item "mu_k" (intercept term for factor k)
 #' \item "ar_phi" (AR coefficients for each k under AR(1) model)
 #' \item "sigma_et" (observation error SD; possibly dynamic)
@@ -2082,6 +2097,10 @@ dfosr_ar = function(Y, tau, X = NULL, K = NULL,
 
   # Rescale observation points to [0,1]
   tau01 = apply(tau, 2, function(x) (x - min(x))/(max(x) - min(x)))
+
+  # Rescale by observation SD (and correct parameters later):
+  sdY = sd(Y, na.rm=TRUE);
+  Y = Y/sdY;
   #----------------------------------------------------------------------------
   # Initialize the main terms:
 
@@ -2637,15 +2656,16 @@ dfosr_ar = function(Y, tau, X = NULL, K = NULL,
     computeTimeRemaining(nsi, timer0, nstot, nrep = 500)
   }
 
-  if(!is.na(match('beta', mcmc_params))) mcmc_output$beta = post.beta
+  # Store the results (and correct for rescaling by sdY):
+  if(!is.na(match('beta', mcmc_params))) mcmc_output$beta = post.beta*sdY
   if(!is.na(match('fk', mcmc_params))) mcmc_output$fk = post.fk
-  if(!is.na(match('alpha', mcmc_params))) mcmc_output$alpha = post.alpha
-  if(!is.na(match('mu_k', mcmc_params))) mcmc_output$mu_k = post.mu_k
-  if(!is.na(match('sigma_et', mcmc_params))) mcmc_output$sigma_et = post.sigma_et
+  if(!is.na(match('alpha', mcmc_params))) mcmc_output$alpha = post.alpha*sdY
+  if(!is.na(match('mu_k', mcmc_params))) mcmc_output$mu_k = post.mu_k*sdY
+  if(!is.na(match('sigma_et', mcmc_params))) mcmc_output$sigma_et = post.sigma_et*sdY
   if(!is.na(match('ar_phi', mcmc_params))) mcmc_output$ar_phi = post.ar_phi
-  if(!is.na(match('Yhat', mcmc_params))) mcmc_output$Yhat = post.Yhat
-  if(!is.na(match('Ypred', mcmc_params))) mcmc_output$Ypred = post.Ypred
-  if(forecasting) {mcmc_output$Yfore = post.Yfore; mcmc_output$Yfore_hat = post.Yfore_hat}
+  if(!is.na(match('Yhat', mcmc_params))) mcmc_output$Yhat = post.Yhat*sdY
+  if(!is.na(match('Ypred', mcmc_params))) mcmc_output$Ypred = post.Ypred*sdY
+  if(forecasting) {mcmc_output$Yfore = post.Yfore*sdY; mcmc_output$Yfore_hat = post.Yfore_hat*sdY}
 
   if(computeDIC){
     # Log-likelihood evaluated at posterior means:
@@ -2689,9 +2709,9 @@ dfosr_ar = function(Y, tau, X = NULL, K = NULL,
 #' @param mcmc_params named list of parameters for which we store the MCMC output;
 #' must be one or more of
 #' \itemize{
-#' \item "beta" (factors)
+#' \item "beta" (dynamic factors)
 #' \item "fk" (loading curves)
-#' \item "alpha" (regression coefficients)
+#' \item "alpha" (regression coefficients; possibly dynamic)
 #' \item "mu_k" (intercept term for factor k)
 #' \item "ar_phi" (AR coefficients for each k under AR(1) model)
 #' \item "sigma_et" (observation error SD; possibly dynamic)
@@ -2729,6 +2749,10 @@ dfosr_basis_ar = function(Y, tau, X = NULL,
 
   # Rescale observation points to [0,1]
   tau01 = apply(tau, 2, function(x) (x - min(x))/(max(x) - min(x)))
+
+  # Rescale by observation SD (and correct parameters later):
+  sdY = sd(Y, na.rm=TRUE);
+  Y = Y/sdY;
   #----------------------------------------------------------------------------
   # Initialize the main terms:
 
@@ -3223,15 +3247,16 @@ dfosr_basis_ar = function(Y, tau, X = NULL,
     computeTimeRemaining(nsi, timer0, nstot, nrep = 500)
   }
 
-  if(!is.na(match('beta', mcmc_params))) mcmc_output$beta = post.beta
+  # Store the results (and correct for rescaling by sdY):
+  if(!is.na(match('beta', mcmc_params))) mcmc_output$beta = post.beta*sdY
   if(!is.na(match('fk', mcmc_params))) mcmc_output$fk = post.fk
-  if(!is.na(match('alpha', mcmc_params))) mcmc_output$alpha = post.alpha
-  if(!is.na(match('mu_k', mcmc_params))) mcmc_output$mu_k = post.mu_k
-  if(!is.na(match('sigma_et', mcmc_params))) mcmc_output$sigma_et = post.sigma_et
+  if(!is.na(match('alpha', mcmc_params))) mcmc_output$alpha = post.alpha*sdY
+  if(!is.na(match('mu_k', mcmc_params))) mcmc_output$mu_k = post.mu_k*sdY
+  if(!is.na(match('sigma_et', mcmc_params))) mcmc_output$sigma_et = post.sigma_et*sdY
   if(!is.na(match('ar_phi', mcmc_params))) mcmc_output$ar_phi = post.ar_phi
-  if(!is.na(match('Yhat', mcmc_params))) mcmc_output$Yhat = post.Yhat
-  if(!is.na(match('Ypred', mcmc_params))) mcmc_output$Ypred = post.Ypred
-  if(forecasting) {mcmc_output$Yfore = post.Yfore; mcmc_output$Yfore_hat = post.Yfore_hat}
+  if(!is.na(match('Yhat', mcmc_params))) mcmc_output$Yhat = post.Yhat*sdY
+  if(!is.na(match('Ypred', mcmc_params))) mcmc_output$Ypred = post.Ypred*sdY
+  if(forecasting) {mcmc_output$Yfore = post.Yfore*sdY; mcmc_output$Yfore_hat = post.Yfore_hat*sdY}
 
   if(computeDIC){
     # Log-likelihood evaluated at posterior means:
