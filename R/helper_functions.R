@@ -745,6 +745,7 @@ blockDiag = function(Amat, nrep){
 #' @param alpha confidence level for the bands
 #' @param include_joint logical; if TRUE, include joint bands (as well as pointwise)
 #' @param main text for title plot
+#' @export
 plot_curve = function(post_f, tau = NULL, alpha = 0.05, include_joint = TRUE, main = "Posterior Mean and Credible Bands"){
 
   Ns = nrow(post_f); m = ncol(post_f)
