@@ -1012,7 +1012,7 @@ uni.slice <- function (x0, g, w=1, m=Inf, lower=-Inf, upper=+Inf, gx0=NULL)
 }
 
 # Just add these for general use:
-#' @importFrom stats quantile rgamma rnorm sd splinefun var rexp runif arima arima.sim dbeta dgamma dist dnorm dunif fitted lm median poly rbinom
+#' @importFrom stats quantile rgamma rnorm sd splinefun var rexp runif arima arima.sim dbeta dgamma dist dnorm dunif fitted lm median poly rbinom dnbinom rnbinom rpois
 NULL
 
 #' @useDynLib dfosr

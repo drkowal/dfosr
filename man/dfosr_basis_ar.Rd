@@ -7,7 +7,7 @@ and a Known Basis Expansion}
 \usage{
 dfosr_basis_ar(Y, tau, X = NULL, use_dynamic_reg = TRUE, use_fpca = TRUE,
   use_shrinkage_priors = FALSE, nsave = 1000, nburn = 1000, nskip = 2,
-  mcmc_params = list("beta", "fk", "alpha", "mu_k", "ar_phi"), X_Tp1 = NULL,
+  mcmc_params = list("beta", "fk", "alpha", "mu_k", "ar_phi"), X_Tp1 = 1,
   use_obs_SV = FALSE, computeDIC = TRUE)
 }
 \arguments{
@@ -44,8 +44,7 @@ must be one or more of
 \item "Yfore" (one-step forecast; includes the estimate and the distribution)
 }}
 
-\item{X_Tp1}{the \code{p x 1} matrix of predictors at the forecasting time point \code{T + 1};
-if \code{NULL}, set to an intercept}
+\item{X_Tp1}{the \code{p x 1} matrix of predictors at the forecasting time point \code{T + 1}}
 
 \item{use_obs_SV}{logical; when TRUE, include a stochastic volatility model
 for the observation error variance}

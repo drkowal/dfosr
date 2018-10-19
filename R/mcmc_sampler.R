@@ -4,8 +4,8 @@
 #' MCMC Sampling Algorithm for the Functional Dynamic Linear Model
 #'
 #' Runs the MCMC for the functional dynamic linear model (with no predictor variables).
-#' Models for the (dynamic) factors include independent factors, an AR(1) model
-#' for the factors, and a random walk model for the factors.
+#' Models for the (dynamic) factors include independent factors, an AR(1) model,
+#' and a random walk model.
 #'
 #' @param Y the \code{T x m} data observation matrix, where \code{T} is the number of time points and \code{m} is the number of observation points (\code{NA}s allowed)
 #' @param tau the \code{m x d} matrix of coordinates of observation points
@@ -32,8 +32,7 @@
 #' \item "Ypred" (posterior predictive values)
 #' \item "Yfore" (one-step forecast; includes the estimate and the distribution)
 #' }
-#' @param X_Tp1 the \code{p x 1} matrix of predictors at the forecasting time point \code{T + 1};
-#' if \code{NULL}, set to an intercept
+#' @param X_Tp1 the \code{p x 1} matrix of predictors at the forecasting time point \code{T + 1}
 #' @param use_obs_SV logical; when TRUE, include a stochastic volatility model
 #' for the observation error variance
 #' @param includeBasisInnovation logical; when TRUE, include an iid basis coefficient term for residual correlation
@@ -98,7 +97,7 @@ fdlm = function(Y, tau, K = NULL,
                 nsave = 1000, nburn = 1000, nskip = 3,
                 mcmc_params = list("beta", "fk"),
                 use_obs_SV = FALSE,
-                X_Tp1 = NULL,
+                X_Tp1 = 1,
                 includeBasisInnovation = FALSE,
                 computeDIC = TRUE){
 
@@ -565,8 +564,7 @@ fosr = function(Y, tau, X = NULL, K = NULL,
 #' \item "Ypred" (posterior predictive values)
 #' \item "Yfore" (one-step forecast; includes the estimate and the distribution)
 #' }
-#' @param X_Tp1 the \code{p x 1} matrix of predictors at the forecasting time point \code{T + 1};
-#' if \code{NULL}, set to an intercept
+#' @param X_Tp1 the \code{p x 1} matrix of predictors at the forecasting time point \code{T + 1}
 #' @param use_obs_SV logical; when TRUE, include a stochastic volatility model
 #' for the observation error variance
 #' @param includeBasisInnovation logical; when TRUE, include an iid basis coefficient term for residual correlation
@@ -643,7 +641,7 @@ fosr = function(Y, tau, X = NULL, K = NULL,
 fosr_ar = function(Y, tau, X = NULL, K = NULL,
                    nsave = 1000, nburn = 1000, nskip = 3,
                    mcmc_params = list("beta", "fk", "alpha"),
-                   X_Tp1 = NULL,
+                   X_Tp1 = 1,
                    use_obs_SV = FALSE,
                    includeBasisInnovation = FALSE,
                    computeDIC = TRUE){
@@ -698,8 +696,7 @@ fosr_ar = function(Y, tau, X = NULL, K = NULL,
 #' \item "Ypred" (posterior predictive values)
 #' \item "Yfore" (one-step forecast; includes the estimate and the distribution)
 #' }
-#' @param X_Tp1 the \code{p x 1} matrix of predictors at the forecasting time point \code{T + 1};
-#' if \code{NULL}, set to an intercept
+#' @param X_Tp1 the \code{p x 1} matrix of predictors at the forecasting time point \code{T + 1}
 #' @param use_obs_SV logical; when TRUE, include a stochastic volatility model
 #' for the observation error variance
 #' @param includeBasisInnovation logical; when TRUE, include an iid basis coefficient term for residual correlation
@@ -796,7 +793,7 @@ dfosr = function(Y, tau, X = NULL, K = NULL,
                  factor_model = 'AR', use_dynamic_reg = TRUE,
                  nsave = 1000, nburn = 1000, nskip = 3,
                  mcmc_params = list("beta", "fk", "alpha", "mu_k", "ar_phi"),
-                 X_Tp1 = NULL,
+                 X_Tp1 = 1,
                  use_obs_SV = FALSE,
                  includeBasisInnovation = FALSE,
                  computeDIC = TRUE){
@@ -868,8 +865,7 @@ dfosr = function(Y, tau, X = NULL, K = NULL,
 #' \item "Ypred" (posterior predictive values)
 #' \item "Yfore" (one-step forecast; includes the estimate and the distribution)
 #' }
-#' @param X_Tp1 the \code{p x 1} matrix of predictors at the forecasting time point \code{T + 1};
-#' if \code{NULL}, set to an intercept
+#' @param X_Tp1 the \code{p x 1} matrix of predictors at the forecasting time point \code{T + 1}
 #' @param use_obs_SV logical; when TRUE, include a stochastic volatility model
 #' for the observation error variance
 #' @param includeBasisInnovation logical; when TRUE, include an iid basis coefficient term for residual correlation
@@ -883,7 +879,7 @@ dfosr_ind = function(Y, tau, X = NULL, K = NULL,
                      use_dynamic_reg = TRUE,
                      nsave = 1000, nburn = 1000, nskip = 3,
                      mcmc_params = list("beta", "fk", "alpha"),
-                     X_Tp1 = NULL,
+                     X_Tp1 = 1,
                      use_obs_SV = FALSE,
                      includeBasisInnovation = FALSE,
                      computeDIC = TRUE){
@@ -974,7 +970,6 @@ dfosr_ind = function(Y, tau, X = NULL, K = NULL,
     forecasting = TRUE # useful
 
     # Check the forecasting design points:
-    if(is.null(X_Tp1)) X_Tp1 = 1
     if(length(X_Tp1) != p)
       stop("Dimension of predictor X_Tp1 for forecasting must align with alpha;
            try including/excluding an intercept or omit 'Yfore' from the mcmc_params list")
@@ -1478,8 +1473,7 @@ dfosr_ind = function(Y, tau, X = NULL, K = NULL,
 #' \item "Ypred" (posterior predictive values)
 #' \item "Yfore" (one-step forecast; includes the estimate and the distribution)
 #' }
-#' @param X_Tp1 the \code{p x 1} matrix of predictors at the forecasting time point \code{T + 1};
-#' if \code{NULL}, set to an intercept
+#' @param X_Tp1 the \code{p x 1} matrix of predictors at the forecasting time point \code{T + 1}
 #' @param use_obs_SV logical; when TRUE, include a stochastic volatility model
 #' for the observation error variance
 #' @param includeBasisInnovation logical; when TRUE, include an iid basis coefficient term for residual correlation
@@ -1494,7 +1488,7 @@ dfosr_rw = function(Y, tau, X = NULL, K = NULL,
                     use_dynamic_reg = TRUE,
                     nsave = 1000, nburn = 1000, nskip = 3,
                     mcmc_params = list("beta", "fk", "alpha"),
-                    X_Tp1 = NULL,
+                    X_Tp1 = 1,
                     use_obs_SV = FALSE,
                     includeBasisInnovation = FALSE,
                     computeDIC = TRUE){
@@ -1585,7 +1579,6 @@ dfosr_rw = function(Y, tau, X = NULL, K = NULL,
     forecasting = TRUE # useful
 
     # Check the forecasting design points:
-    if(is.null(X_Tp1)) X_Tp1 = 1
     if(length(X_Tp1) != p)
       stop("Dimension of predictor X_Tp1 for forecasting must align with alpha;
            try including/excluding an intercept or omit 'Yfore' from the mcmc_params list")
@@ -2066,8 +2059,7 @@ dfosr_rw = function(Y, tau, X = NULL, K = NULL,
 #' \item "Ypred" (posterior predictive values)
 #' \item "Yfore" (one-step forecast; includes the estimate and the distribution)
 #' }
-#' @param X_Tp1 the \code{p x 1} matrix of predictors at the forecasting time point \code{T + 1};
-#' if \code{NULL}, set to an intercept
+#' @param X_Tp1 the \code{p x 1} matrix of predictors at the forecasting time point \code{T + 1}
 #' @param use_obs_SV logical; when TRUE, include a stochastic volatility model
 #' for the observation error variance
 #' @param includeBasisInnovation logical; when TRUE, include an iid basis coefficient term for residual correlation
@@ -2082,7 +2074,7 @@ dfosr_ar = function(Y, tau, X = NULL, K = NULL,
                     use_dynamic_reg = TRUE,
                     nsave = 1000, nburn = 1000, nskip = 2,
                     mcmc_params = list("beta", "fk", "alpha", "mu_k", "ar_phi"),
-                    X_Tp1 = NULL,
+                    X_Tp1 = 1,
                     use_obs_SV = FALSE,
                     includeBasisInnovation = FALSE,
                     computeDIC = TRUE){
@@ -2173,7 +2165,6 @@ dfosr_ar = function(Y, tau, X = NULL, K = NULL,
     forecasting = TRUE # useful
 
     # Check the forecasting design points:
-    if(is.null(X_Tp1)) X_Tp1 = 1
     if(length(X_Tp1) != p)
       stop("Dimension of predictor X_Tp1 for forecasting must align with alpha;
            try including/excluding an intercept or omit 'Yfore' from the mcmc_params list")
@@ -2722,8 +2713,7 @@ dfosr_ar = function(Y, tau, X = NULL, K = NULL,
 #' \item "Yhat" (fitted values)
 #' \item "Yfore" (one-step forecast; includes the estimate and the distribution)
 #' }
-#' @param X_Tp1 the \code{p x 1} matrix of predictors at the forecasting time point \code{T + 1};
-#' if \code{NULL}, set to an intercept
+#' @param X_Tp1 the \code{p x 1} matrix of predictors at the forecasting time point \code{T + 1}
 #' @param use_obs_SV logical; when TRUE, include a stochastic volatility model
 #' for the observation error variance
 #' @param computeDIC logical; if TRUE, compute the deviance information criterion \code{DIC}
@@ -2739,7 +2729,7 @@ dfosr_basis_ar = function(Y, tau, X = NULL,
                           use_fpca = TRUE, use_shrinkage_priors = FALSE,
                           nsave = 1000, nburn = 1000, nskip = 2,
                           mcmc_params = list("beta", "fk", "alpha", "mu_k", "ar_phi"),
-                          X_Tp1 = NULL,
+                          X_Tp1 = 1,
                           use_obs_SV = FALSE,
                           computeDIC = TRUE){
   #----------------------------------------------------------------------------
@@ -2820,7 +2810,6 @@ dfosr_basis_ar = function(Y, tau, X = NULL,
     forecasting = TRUE # useful
 
     # Check the forecasting design points:
-    if(is.null(X_Tp1)) X_Tp1 = 1
     if(length(X_Tp1) != p)
       stop("Dimension of predictor X_Tp1 for forecasting must align with alpha;
            try including/excluding an intercept or omit 'Yfore' from the mcmc_params list")

@@ -6,7 +6,7 @@
 \usage{
 fdlm(Y, tau, K = NULL, factor_model = "RW", nsave = 1000, nburn = 1000,
   nskip = 3, mcmc_params = list("beta", "fk"), use_obs_SV = FALSE,
-  X_Tp1 = NULL, includeBasisInnovation = FALSE, computeDIC = TRUE)
+  X_Tp1 = 1, includeBasisInnovation = FALSE, computeDIC = TRUE)
 }
 \arguments{
 \item{Y}{the \code{T x m} data observation matrix, where \code{T} is the number of time points and \code{m} is the number of observation points (\code{NA}s allowed)}
@@ -45,8 +45,7 @@ must be one or more of
 \item{use_obs_SV}{logical; when TRUE, include a stochastic volatility model
 for the observation error variance}
 
-\item{X_Tp1}{the \code{p x 1} matrix of predictors at the forecasting time point \code{T + 1};
-if \code{NULL}, set to an intercept}
+\item{X_Tp1}{the \code{p x 1} matrix of predictors at the forecasting time point \code{T + 1}}
 
 \item{includeBasisInnovation}{logical; when TRUE, include an iid basis coefficient term for residual correlation
 (i.e., the idiosyncratic error term for a factor model on the full basis matrix)}
@@ -59,8 +58,8 @@ A named list of the \code{nsave} MCMC samples for the parameters named in \code{
 }
 \description{
 Runs the MCMC for the functional dynamic linear model (with no predictor variables).
-Models for the (dynamic) factors include independent factors, an AR(1) model
-for the factors, and a random walk model for the factors.
+Models for the (dynamic) factors include independent factors, an AR(1) model,
+and a random walk model.
 }
 \note{
 If \code{Tm} is large, then storing all posterior samples for \code{Yhat} or \code{Ypred}, which are \code{nsave x T x m},  may be inefficient
