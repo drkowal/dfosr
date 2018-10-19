@@ -739,12 +739,18 @@ blockDiag = function(Amat, nrep){
 #'
 #' Plot the posterior mean, simultaneous and pointwise 95\% credible bands
 #' for a curve given draws from the posterior distribution
+#'
 #' @param post_f \code{Ns x m} matrix of \code{Ns} posterior simulations
 #' of the curve at \code{m} points
 #' @param tau \code{m x 1} vector of observation points
 #' @param alpha confidence level for the bands
 #' @param include_joint logical; if TRUE, include joint bands (as well as pointwise)
 #' @param main text for title plot
+#'
+#' @importFrom grDevices dev.new
+#' @importFrom graphics abline lines par plot polygon
+#' @import coda
+#'
 #' @export
 plot_curve = function(post_f, tau = NULL, alpha = 0.05, include_joint = TRUE, main = "Posterior Mean and Credible Bands"){
 
