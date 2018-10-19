@@ -7,7 +7,8 @@ Here, both the functional response and the scalar predictors may be time-ordered
 The functions are modeled nonparametrically using an unknown basis expansion, which is learned from the data. 
 The regression coefficients themselves are functions, and may be dynamic as well. 
 The model is represented using a state space construction, which allows for time-varying parameter regression and autocorrelated errors. 
-However, important special casese are also included: fdlm() implements a model for a time series of functional data (without predictors),
+
+Important special cases are also included: fdlm() implements a model for a time series of functional data (without predictors),
 fosr() implements a function-on-scalars regression (without time-ordering), 
 and fosr_ar() extends fosr() to include autocorrelated errors. The most general function is dfosr(), 
 which allows for dynamic or non-dynamic regression coefficient functions, includes a variety of evolution equations, 
