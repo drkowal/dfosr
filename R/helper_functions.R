@@ -223,6 +223,127 @@ simulate_dfosr = function(T = 200,
        Y_true = Y_true, alpha_tilde_true = alpha_tilde_true,
        alpha_arr_true = alpha_arr_true, Beta_true = Beta_true, F_true = F_true, sigma_true = sigma_true)
 }
+#----------------------------------------------------------------------------
+#' Simulate a function-on-scalar regression model
+#'
+#' Simulate data from a function-on-scalar regression model, allowing for
+#' subject-specific random effects. The predictors are multivariate normal with
+#' mean zero and covariance \code{corr^abs(j1-j2)} for correlation parameter \code{corr}
+#' between predictors \code{j1} and \code{j2}.
+#' More predictors than observations (p > n) is allowed.
+#'
+#' @param n number of observed curves (i.e., number of subjects)
+#' @param m total number of observation points (i.e., points along the curve)
+#' @param RSNR root signal-to-noise ratio
+#' @param K_true rank of the model (i.e., number of basis functions used for the functional data simulations)
+#' @param p_0 number of true zero regression coefficients
+#' @param p_1 number of true nonzero regression coefficients
+#' @param sparse_factors logical; if TRUE, then for each nonzero predictor j,
+#' sample a subset of k=1:K_true factors to be nonzero#'
+#' @param corr correlation parameter for predictors
+#' @param perc_missing percentage of missing data (between 0 and 1); default is zero
+#'
+#' @return a list containing the following:
+#' \itemize{
+#' \item \code{Y}: the simulated \code{n x m} functional data matrix
+#' \item \code{X}: the simulated \code{n x p} design matrix
+#' \item \code{tau}: the \code{m}-dimensional vector of observation points
+#' \item \code{Y_true}: the true \code{n x m} functional data matrix (w/o noise)
+#' \item \code{alpha_tilde_true} the true \code{m x p} matrix of regression coefficient functions
+#' \item \code{alpha_arr_true} the true \code{K_true x p} matrix of regression coefficient factors
+#' \item \code{Beta_true} the true \code{n x K_true} matrix of factors
+#' \item \code{F_true} the true \code{m x K_true} matrix of basis (loading curve) functions
+#' \item \code{sigma_true} the true observation error standard deviation
+#' }
+#'
+#' @note The basis functions (or loading curves) are orthonormalized polynomials,
+#' so large values of \code{K_true} are not recommended.
+#'
+#' @examples
+#' # Example: simulate FOSR
+#' sim_data = simulate_fosr(n = 100, m = 20, p_0 = 100, p_1 = 5)
+#' Y = sim_data$Y; X = sim_data$X; tau = sim_data$tau
+#'
+#' @import truncdist
+#' @export
+simulate_fosr = function(n = 100,
+                         m = 50,
+                         RSNR = 5,
+                         K_true = 4,
+                         p_0 = 1000,
+                         p_1 = 5,
+                         sparse_factors = TRUE,
+                         corr = 0,
+                         perc_missing = 0){
+  # Number of predictors:
+  p = 1 + p_1 + p_0
+
+  # Observation points:
+  tau = seq(0, 1, length.out = m)
+
+  # FLCs: orthonormalized polynomials
+  F_true = cbind(1/sqrt(m),
+                 poly(tau, K_true - 1))
+
+  # Simulate the predictors:
+  Xiid = matrix(rnorm(n = n*(p-1)), nrow = n, ncol = p-1)
+  if(corr == 0){
+    X = cbind(1,Xiid)
+  } else {
+    # Correlated predictors:
+    ind_mat = matrix(rep(1:(p-1), p-1),nrow=p-1, byrow=FALSE);
+    ind_diffs = abs(ind_mat - t(ind_mat))
+    cov_mat = corr^ind_diffs
+    # Cholesky:
+    ch_cov_mat = chol(cov_mat)
+
+    # Correlated predictors:
+    X = cbind(1,
+              t(crossprod(ch_cov_mat, t(Xiid))))
+  }
+
+  # True coefficients:
+  alpha_arr_true = array(0, c(K_true, p))
+
+  # p = 1 Intercept coefficients: decaying importance
+  alpha_arr_true[,1] = 1/(1:K_true)
+
+  # Simulate the nonzero factors
+  # Nonzero indices: if correlated predictors, space out the true ones
+  nonzero_ind = 1:p_1; if(corr != 0) nonzero_ind = round(seq(1, p-1, length.out = p_1))
+  if(p_1 > 0){for(j in nonzero_ind){
+    # Which factors are nonzero for predictor j?
+    if(sparse_factors){ # Truncated Poisson(1)
+      k_p = sample(1:K_true, truncdist::rtrunc(n = 1, spec = 'pois', a = 1, b = K_true, lambda = 1))
+    } else k_p = 1:K_true
+
+    # Simulate true values of the (nonzero) regression coefficients (decaying importance)
+    alpha_arr_true[k_p, j+1] = rnorm(n = length(k_p), mean = 0, sd = 1/k_p)
+  }}
+
+  # True coefficient functions:
+  alpha_tilde_true = F_true %*% alpha_arr_true # m x p
+
+  # True factors: add Gaussian (subject-specific) noise (decaying importance)
+  Beta_true = matrix(0, nrow = n, ncol = K_true)
+  for(k in 1:K_true) Beta_true[,k] = X%*%alpha_arr_true[k,] + rnorm(n = n, sd = 1/k)
+
+  # True FTS:
+  Y_true = tcrossprod(Beta_true, F_true)
+
+  # Noise SD based on RSNR:
+  sigma_true = sd(Y_true)/RSNR
+
+  # Observed data:
+  Y = Y_true + sigma_true*rnorm(m*n)
+
+  # Remove any observation points:
+  if(perc_missing > 0 ) Y[sample(1:length(Y), perc_missing*length(Y))] = NA
+
+  list(Y = Y, X = X, tau = tau,
+       Y_true = Y_true, alpha_tilde_true = alpha_tilde_true,
+       alpha_arr_true = alpha_arr_true, Beta_true = Beta_true, F_true = F_true, sigma_true = sigma_true)
+}
 #' Initialize the reduced-rank functional data model
 #'
 #' Compute initial values for the factors and loadings curves,
@@ -573,6 +694,28 @@ getSplineInfo_d = function(tau, m_eff = NULL, orthonormalize = TRUE){
   # Return the matrix, the penalty, and the cross product (of the basis)
   list(Bmat = Bmat, Omega = Omega, BtB = BtB)
 }
+#----------------------------------------------------------------------------
+#' Compute Global Bayesian P-Values
+#'
+#' Given posterior samples for the loading curves \code{fk} and the
+#' regression coefficient factors \code{alpha},
+#' compute Global Bayesian P-Values for all regression coefficient functions
+#'
+#' @param post_fk \code{Nsims x m x K} matrix of posterior draws of the loading curve matrix
+#' @param post_alpha \code{Nsims x p x K} matrix of posterior draws of the regression coefficient factors
+#'
+#' @return \code{p x 1} vector of Global Bayesian P-Values
+#'
+#' @export
+fosr_gbpv = function(post_fk, post_alpha){
+  p = dim(post_alpha)[2]
+  gbpv = numeric(p)
+  for(j in 1:p){
+    post_alpha_tilde_j = get_post_alpha_tilde(post_fk, post_alpha[,j,])
+    gbpv[j] = min(simBaS(post_alpha_tilde_j))
+  }
+  gbpv
+}
 #####################################################################################################
 #' Compute Simultaneous Credible Bands
 #'
@@ -748,7 +891,6 @@ blockDiag = function(Amat, nrep){
 #' @param main title text (optional)
 #' @param ylim range of y-axis (optional)
 #'
-#' @importFrom grDevices dev.new
 #' @importFrom graphics abline lines par plot polygon
 #' @import coda
 #'
@@ -798,7 +940,8 @@ plot_factors = function(post_beta, dates = NULL){
   K = dim(post_beta)[3] # Number of factors
   if(is.null(dates)) dates = seq(0, 1, length.out = dim(post_beta)[2])
 
-  dev.new(); par(mai = c(.8,.9,.4,.4), bg = 'gray90');
+  #dev.new();
+  par(mai = c(.8,.9,.4,.4), bg = 'gray90');
   plot(dates, post_beta[1,,1], ylim = range(post_beta), xlab = 'Dates', ylab = '', main = paste('Dynamic Factors', sep=''), type='n', cex.lab = 2, cex.axis=2,cex.main=2)
   abline(h = 0, lty=3, lwd=2);
   for(k in K:1){
@@ -818,7 +961,6 @@ plot_factors = function(post_beta, dates = NULL){
 #' distribution of the \code{m x K} matrix of FLCs, \code{fk}
 #' @param tau \code{m x 1} vector of observation points
 #'
-#' @importFrom grDevices dev.new
 #' @importFrom graphics abline lines  par plot polygon
 #' @import coda
 #' @export
@@ -826,7 +968,8 @@ plot_flc = function(post_fk, tau = NULL){
   K = dim(post_fk)[3] # Number of factors
   if(is.null(tau)) tau = seq(0, 1, length.out = dim(post_fk)[2])
 
-  dev.new(); par(mai = c(.9,.9,.4,.4), bg = 'gray90');
+  #dev.new();
+  par(mai = c(.9,.9,.4,.4), bg = 'gray90');
   plot(tau, post_fk[1,,1], ylim = range(post_fk), xlab = expression(tau), ylab = '', main = 'Factor Loading Curves', type='n', cex.lab = 2, cex.axis=2,cex.main=2)
   abline(h = 0, lty=3, lwd=2);
   for(k in K:1){
@@ -867,7 +1010,8 @@ plot_fitted = function(y, mu, postY, y_true = NULL, t01 = NULL, include_joint_ba
   if(include_joint_bands) dcib = credBands(postY)
 
   # Plot
-  dev.new(); par(mfrow=c(1,1), mai = c(1,1,1,1))
+  #dev.new();
+  par(mfrow=c(1,1), mai = c(1,1,1,1))
   plot(t01, y, type='n', ylim=range(dcib, y, na.rm=TRUE), xlab = 't', ylab=expression(paste("y"[t])), main = 'Fitted Values: Conditional Expectation', cex.lab = 2, cex.main = 2, cex.axis = 2)
   polygon(c(t01, rev(t01)), c(dcib[,2], rev(dcib[,1])), col='gray50', border=NA)
   polygon(c(t01, rev(t01)), c(dcip[,2], rev(dcip[,1])), col='grey', border=NA)

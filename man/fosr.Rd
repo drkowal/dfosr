@@ -46,6 +46,7 @@ A named list of the \code{nsave} MCMC samples for the parameters named in \code{
 \description{
 Runs the MCMC for the function-on-scalars regression model based on
 a reduced-rank expansion. Here we assume the factor regression has independent errors,
+which allows for subject-specific random effects,
 as well as some additional default conditions.
 }
 \note{

@@ -119,6 +119,7 @@ fdlm = function(Y, tau, K = NULL,
 #'
 #' Runs the MCMC for the function-on-scalars regression model based on
 #' a reduced-rank expansion. Here we assume the factor regression has independent errors,
+#' which allows for subject-specific random effects,
 #' as well as some additional default conditions.
 #'
 #' @param Y the \code{T x m} data observation matrix, where \code{T} is the number of time points and \code{m} is the number of observation points (\code{NA}s allowed)
@@ -184,7 +185,7 @@ fdlm = function(Y, tau, K = NULL,
 #'             y_true = sim_data$Y_true[i,],
 #'             t01 = tau)
 #'}
-#' @import  KFAS truncdist
+#' @import truncdist
 #' @export
 fosr = function(Y, tau, X = NULL, K = NULL,
                 nsave = 1000, nburn = 1000, nskip = 3,

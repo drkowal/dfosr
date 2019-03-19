@@ -6,8 +6,9 @@
 \usage{
 dfosr(Y, tau, X = NULL, K = NULL, factor_model = "AR",
   use_dynamic_reg = TRUE, nsave = 1000, nburn = 1000, nskip = 3,
-  mcmc_params = list("beta", "fk", "alpha", "mu_k", "ar_phi"), X_Tp1 = 1,
-  use_obs_SV = FALSE, includeBasisInnovation = FALSE, computeDIC = TRUE)
+  mcmc_params = list("beta", "fk", "alpha", "mu_k", "ar_phi"),
+  X_Tp1 = 1, use_obs_SV = FALSE, includeBasisInnovation = FALSE,
+  computeDIC = TRUE)
 }
 \arguments{
 \item{Y}{the \code{T x m} data observation matrix, where \code{T} is the number of time points and \code{m} is the number of observation points (\code{NA}s allowed)}

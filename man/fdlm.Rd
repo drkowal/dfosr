@@ -4,9 +4,10 @@
 \alias{fdlm}
 \title{MCMC Sampling Algorithm for the Functional Dynamic Linear Model}
 \usage{
-fdlm(Y, tau, K = NULL, factor_model = "RW", nsave = 1000, nburn = 1000,
-  nskip = 3, mcmc_params = list("beta", "fk"), use_obs_SV = FALSE,
-  X_Tp1 = 1, includeBasisInnovation = FALSE, computeDIC = TRUE)
+fdlm(Y, tau, K = NULL, factor_model = "RW", nsave = 1000,
+  nburn = 1000, nskip = 3, mcmc_params = list("beta", "fk"),
+  use_obs_SV = FALSE, X_Tp1 = 1, includeBasisInnovation = FALSE,
+  computeDIC = TRUE)
 }
 \arguments{
 \item{Y}{the \code{T x m} data observation matrix, where \code{T} is the number of time points and \code{m} is the number of observation points (\code{NA}s allowed)}
