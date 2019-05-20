@@ -8,8 +8,7 @@ and a Known Basis Expansion}
 dfosr_basis_ar(Y, tau, X = NULL, use_dynamic_reg = TRUE,
   use_fpca = TRUE, use_shrinkage_priors = FALSE, nsave = 1000,
   nburn = 1000, nskip = 2, mcmc_params = list("beta", "fk", "alpha",
-  "mu_k", "ar_phi"), X_Tp1 = 1, use_obs_SV = FALSE,
-  computeDIC = TRUE)
+  "mu_k", "ar_phi"), X_Tp1 = 1, use_obs_SV = FALSE)
 }
 \arguments{
 \item{Y}{the \code{T x m} data observation matrix, where \code{T} is the number of time points and \code{m} is the number of observation points (\code{NA}s allowed)}
@@ -49,9 +48,6 @@ must be one or more of
 
 \item{use_obs_SV}{logical; when TRUE, include a stochastic volatility model
 for the observation error variance}
-
-\item{computeDIC}{logical; if TRUE, compute the deviance information criterion \code{DIC}
-and the effective number of parameters \code{p_d}}
 }
 \value{
 A named list of the \code{nsave} MCMC samples for the parameters named in \code{mcmc_params}

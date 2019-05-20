@@ -7,7 +7,7 @@
 dfosr_ar(Y, tau, X = NULL, K = NULL, use_dynamic_reg = TRUE,
   nsave = 1000, nburn = 1000, nskip = 2, mcmc_params = list("beta",
   "fk", "alpha", "mu_k", "ar_phi"), X_Tp1 = 1, use_obs_SV = FALSE,
-  includeBasisInnovation = FALSE, computeDIC = TRUE)
+  includeBasisInnovation = FALSE, Con_mat = NULL)
 }
 \arguments{
 \item{Y}{the \code{T x m} data observation matrix, where \code{T} is the number of time points and \code{m} is the number of observation points (\code{NA}s allowed)}
@@ -50,8 +50,8 @@ for the observation error variance}
 \item{includeBasisInnovation}{logical; when TRUE, include an iid basis coefficient term for residual correlation
 (i.e., the idiosyncratic error term for a factor model on the full basis matrix)}
 
-\item{computeDIC}{logical; if TRUE, compute the deviance information criterion \code{DIC}
-and the effective number of parameters \code{p_d}}
+\item{Con_mat}{a \code{Jc x m} matrix of constraints for the loading curves such that
+\code{Con_mat*fk = 0} for each loading curve \code{fk}; default is NULL for no constraints.}
 }
 \value{
 A named list of the \code{nsave} MCMC samples for the parameters named in \code{mcmc_params}

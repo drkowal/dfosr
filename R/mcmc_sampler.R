@@ -37,8 +37,8 @@
 #' for the observation error variance
 #' @param includeBasisInnovation logical; when TRUE, include an iid basis coefficient term for residual correlation
 #' (i.e., the idiosyncratic error term for a factor model on the full basis matrix)
-#' @param computeDIC logical; if TRUE, compute the deviance information criterion \code{DIC}
-#' and the effective number of parameters \code{p_d}
+#' @param Con_mat a \code{Jc x m} matrix of constraints for the loading curves such that
+#' \code{Con_mat*fk = 0} for each loading curve \code{fk}; default is NULL for no constraints.
 #' @return A named list of the \code{nsave} MCMC samples for the parameters named in \code{mcmc_params}
 #'
 #' @note If \code{Tm} is large, then storing all posterior samples for \code{Yhat} or \code{Ypred}, which are \code{nsave x T x m},  may be inefficient
@@ -99,7 +99,7 @@ fdlm = function(Y, tau, K = NULL,
                 use_obs_SV = FALSE,
                 X_Tp1 = 1,
                 includeBasisInnovation = FALSE,
-                computeDIC = TRUE){
+                Con_mat = NULL){
 
   # Checks will be done in dfosr():
   mcmc_output = dfosr(Y = Y, tau = tau, K = K,
@@ -109,8 +109,7 @@ fdlm = function(Y, tau, K = NULL,
                       mcmc_params = mcmc_params,
                       X_Tp1 = X_Tp1,
                       use_obs_SV = use_obs_SV,
-                      includeBasisInnovation = includeBasisInnovation,
-                      computeDIC = computeDIC)
+                      includeBasisInnovation = includeBasisInnovation)
 
   # Other DFOSR terms are not relevant
   return(mcmc_output)
@@ -142,8 +141,8 @@ fdlm = function(Y, tau, K = NULL,
 #' \item "Yhat" (fitted values)
 #' \item "Ypred" (posterior predictive values)
 #' }
-#' @param computeDIC logical; if TRUE, compute the deviance information criterion \code{DIC}
-#' and the effective number of parameters \code{p_d}
+#' @param Con_mat a \code{Jc x m} matrix of constraints for the loading curves such that
+#' \code{Con_mat*fk = 0} for each loading curve \code{fk}; default is NULL for no constraints.
 #' @return A named list of the \code{nsave} MCMC samples for the parameters named in \code{mcmc_params}
 #'
 #' @note If \code{Tm} is large, then storing all posterior samples for \code{Yhat} or \code{Ypred}, which are \code{nsave x T x m},  may be inefficient
@@ -190,12 +189,11 @@ fdlm = function(Y, tau, K = NULL,
 fosr = function(Y, tau, X = NULL, K = NULL,
                 nsave = 1000, nburn = 1000, nskip = 3,
                 mcmc_params = list("beta", "fk", "alpha", "sigma_e", "sigma_g"),
-                computeDIC = TRUE){
+                Con_mat = NULL){
 
   # Some options (for now):
   sample_nu = TRUE # Sample DF parameter, or fix at nu=3?
   sample_a1a2 = TRUE # Sample a1, a2, or fix at a1=2, a2=3?
-
   #----------------------------------------------------------------------------
   # Assume that we've done checks elsewhere
   #----------------------------------------------------------------------------
@@ -235,6 +233,14 @@ fosr = function(Y, tau, X = NULL, K = NULL,
 
   # Initialize the FLC smoothing parameters (conditional MLE):
   tau_f_k = apply(Psi, 2, function(x) (ncol(splineInfo$Bmat) - (d+1))/crossprod(x, splineInfo$Omega)%*%x)
+
+  # Constraint matrix, if necessary:
+  if(!is.null(Con_mat)){
+    if(ncol(Con_mat) != m)
+      stop('The constraint matrix (Con_mat) must be Jc x m, where Jc is the number of constraints.')
+
+    BtCon = crossprod(splineInfo$Bmat, t(Con_mat))
+  } else BtCon = NULL
   #----------------------------------------------------------------------------
   # Predictors:
   if(!is.null(X)){
@@ -312,11 +318,11 @@ fosr = function(Y, tau, X = NULL, K = NULL,
   if(!is.na(match('beta', mcmc_params))) post.beta = array(NA, c(nsave, T, K))
   if(!is.na(match('fk', mcmc_params))) post.fk = array(NA, c(nsave, m, K))
   if(!is.na(match('alpha', mcmc_params))) post.alpha = array(NA, c(nsave, p, K))
-  if(!is.na(match('sigma_e', mcmc_params)) || computeDIC) post.sigma_e = array(NA, c(nsave, 1))
+  if(!is.na(match('sigma_e', mcmc_params))) post.sigma_e = array(NA, c(nsave, 1))
   if(!is.na(match('sigma_g', mcmc_params))) post.sigma_g = array(NA, c(nsave, T, K))
-  if(!is.na(match('Yhat', mcmc_params)) || computeDIC) post.Yhat = array(NA, c(nsave, T, m))
+  if(!is.na(match('Yhat', mcmc_params))) post.Yhat = array(NA, c(nsave, T, m))
   if(!is.na(match('Ypred', mcmc_params))) post.Ypred = array(NA, c(nsave, T, m))
-  if(computeDIC) post_loglike = numeric(nsave)
+  post_log_like_point = array(NA, c(nsave, T*m))
 
   # Total number of MCMC simulations:
   nstot = nburn+(nskip+1)*(nsave)
@@ -343,7 +349,8 @@ fosr = function(Y, tau, X = NULL, K = NULL,
                    BtB = splineInfo$BtB, #diag(nrow(BtY)),
                    Omega = splineInfo$Omega,
                    lambda = tau_f_k,
-                   sigmat2 = sigma_et^2)
+                   sigmat2 = sigma_et^2,
+                   BtCon = BtCon)
     # And update the loading curves:
     Fmat = splineInfo$Bmat%*%Psi;
 
@@ -495,11 +502,11 @@ fosr = function(Y, tau, X = NULL, K = NULL,
         if(!is.na(match('beta', mcmc_params))) post.beta[isave,,] = Beta
         if(!is.na(match('fk', mcmc_params))) post.fk[isave,,] = Fmat
         if(!is.na(match('alpha', mcmc_params))) post.alpha[isave,,] = alpha_pk
-        if(!is.na(match('sigma_e', mcmc_params)) || computeDIC) post.sigma_e[isave,] = sigma_e
+        if(!is.na(match('sigma_e', mcmc_params))) post.sigma_e[isave,] = sigma_e
         if(!is.na(match('sigma_g', mcmc_params))) post.sigma_g[isave,,] = sigma_gamma_tk
-        if(!is.na(match('Yhat', mcmc_params)) || computeDIC) post.Yhat[isave,,] = Yhat
+        if(!is.na(match('Yhat', mcmc_params))) post.Yhat[isave,,] = Yhat
         if(!is.na(match('Ypred', mcmc_params))) post.Ypred[isave,,] = rnorm(n = T*m, mean = matrix(Yhat), sd = rep(sigma_et,m))
-        if(computeDIC) post_loglike[isave] = sum(dnorm(matrix(Yna), mean = matrix(Yhat), sd = rep(sigma_et,m), log = TRUE), na.rm = TRUE)
+        post_log_like_point[isave,] = dnorm(matrix(Yna), mean = matrix(Yhat), sd = rep(sigma_et,m), log = TRUE)
 
         # And reset the skip counter:
         skipcount = 0
@@ -517,22 +524,10 @@ fosr = function(Y, tau, X = NULL, K = NULL,
   if(!is.na(match('Yhat', mcmc_params))) mcmc_output$Yhat = post.Yhat*sdY
   if(!is.na(match('Ypred', mcmc_params))) mcmc_output$Ypred = post.Ypred*sdY
 
-  if(computeDIC){
-    # Log-likelihood evaluated at posterior means:
-    loglike_hat = sum(dnorm(matrix(Yna),
-                            mean = matrix(colMeans(post.Yhat)),
-                            sd = rep(colMeans(post.sigma_e), m*T),
-                            log = TRUE), na.rm=TRUE)
-
-    # Effective number of parameters (Note: two options)
-    p_d = c(2*(loglike_hat - mean(post_loglike)),
-            2*var(post_loglike))
-    # DIC:
-    DIC = -2*loglike_hat + 2*p_d
-
-    # Store the DIC and the effective number of parameters (p_d)
-    mcmc_output$DIC = DIC; mcmc_output$p_d = p_d
-  }
+  # Compute WAIC:
+  lppd = sum(log(colMeans(exp(post_log_like_point), na.rm=TRUE)), na.rm=TRUE)
+  mcmc_output$p_waic = sum(apply(post_log_like_point, 2, function(x) sd(x, na.rm=TRUE)^2), na.rm=TRUE)
+  mcmc_output$WAIC = -2*(lppd - mcmc_output$p_waic)
 
   print(paste('Total time: ', round((proc.time()[3] - timer0)), 'seconds'))
 
@@ -570,8 +565,8 @@ fosr = function(Y, tau, X = NULL, K = NULL,
 #' for the observation error variance
 #' @param includeBasisInnovation logical; when TRUE, include an iid basis coefficient term for residual correlation
 #' (i.e., the idiosyncratic error term for a factor model on the full basis matrix)
-#' @param computeDIC logical; if TRUE, compute the deviance information criterion \code{DIC}
-#' and the effective number of parameters \code{p_d}
+#' @param Con_mat a \code{Jc x m} matrix of constraints for the loading curves such that
+#' \code{Con_mat*fk = 0} for each loading curve \code{fk}; default is NULL for no constraints.
 #' @return A named list of the \code{nsave} MCMC samples for the parameters named in \code{mcmc_params}
 #'
 #' @note If \code{Tm} is large, then storing all posterior samples for \code{Yhat} or \code{Ypred}, which are \code{nsave x T x m},  may be inefficient
@@ -645,7 +640,7 @@ fosr_ar = function(Y, tau, X = NULL, K = NULL,
                    X_Tp1 = 1,
                    use_obs_SV = FALSE,
                    includeBasisInnovation = FALSE,
-                   computeDIC = TRUE){
+                   Con_mat = NULL){
 
   # Checks will be done in dfosr():
   mcmc_output = dfosr(Y = Y, tau = tau, X = X, K = K,
@@ -655,8 +650,7 @@ fosr_ar = function(Y, tau, X = NULL, K = NULL,
                       mcmc_params = mcmc_params,
                       X_Tp1 = X_Tp1,
                       use_obs_SV = use_obs_SV,
-                      includeBasisInnovation = includeBasisInnovation,
-                      computeDIC = computeDIC)
+                      includeBasisInnovation = includeBasisInnovation)
   # Other DFOSR terms are not relevant
   return(mcmc_output)
 }
@@ -702,8 +696,8 @@ fosr_ar = function(Y, tau, X = NULL, K = NULL,
 #' for the observation error variance
 #' @param includeBasisInnovation logical; when TRUE, include an iid basis coefficient term for residual correlation
 #' (i.e., the idiosyncratic error term for a factor model on the full basis matrix)
-#' @param computeDIC logical; if TRUE, compute the deviance information criterion \code{DIC}
-#' and the effective number of parameters \code{p_d}
+#' @param Con_mat a \code{Jc x m} matrix of constraints for the loading curves such that
+#' \code{Con_mat*fk = 0} for each loading curve \code{fk}; default is NULL for no constraints.
 #' @return A named list of the \code{nsave} MCMC samples for the parameters named in \code{mcmc_params}
 #'
 #' @note  This sampler loops over the k=1,...,K factors,
@@ -797,7 +791,7 @@ dfosr = function(Y, tau, X = NULL, K = NULL,
                  X_Tp1 = 1,
                  use_obs_SV = FALSE,
                  includeBasisInnovation = FALSE,
-                 computeDIC = TRUE){
+                 Con_mat = NULL){
   #----------------------------------------------------------------------------
   # Run some checks:
   # Convert to upper case, then check for matches to existing models:
@@ -815,7 +809,7 @@ dfosr = function(Y, tau, X = NULL, K = NULL,
                            X_Tp1 = X_Tp1,
                            use_obs_SV = use_obs_SV,
                            includeBasisInnovation = includeBasisInnovation,
-                           computeDIC = computeDIC)
+                           Con_mat = Con_mat)
   }
   if(factor_model == "AR"){
     mcmc_output = dfosr_ar(Y = Y, tau = tau, X = X, K = K,
@@ -825,7 +819,7 @@ dfosr = function(Y, tau, X = NULL, K = NULL,
                            X_Tp1 = X_Tp1,
                            use_obs_SV = use_obs_SV,
                            includeBasisInnovation = includeBasisInnovation,
-                           computeDIC = computeDIC)
+                           Con_mat = Con_mat)
   }
   if(factor_model == "IND"){
     mcmc_output = dfosr_ind(Y = Y, tau = tau, X = X, K = K,
@@ -835,7 +829,7 @@ dfosr = function(Y, tau, X = NULL, K = NULL,
                             X_Tp1 = X_Tp1,
                             use_obs_SV = use_obs_SV,
                             includeBasisInnovation = includeBasisInnovation,
-                            computeDIC = computeDIC)
+                            Con_mat = Con_mat)
   }
   return(mcmc_output)
 }
@@ -871,8 +865,8 @@ dfosr = function(Y, tau, X = NULL, K = NULL,
 #' for the observation error variance
 #' @param includeBasisInnovation logical; when TRUE, include an iid basis coefficient term for residual correlation
 #' (i.e., the idiosyncratic error term for a factor model on the full basis matrix)
-#' @param computeDIC logical; if TRUE, compute the deviance information criterion \code{DIC}
-#' and the effective number of parameters \code{p_d}
+#' @param Con_mat a \code{Jc x m} matrix of constraints for the loading curves such that
+#' \code{Con_mat*fk = 0} for each loading curve \code{fk}; default is NULL for no constraints.
 #' @return A named list of the \code{nsave} MCMC samples for the parameters named in \code{mcmc_params}
 #'
 #' @import  KFAS truncdist
@@ -883,7 +877,7 @@ dfosr_ind = function(Y, tau, X = NULL, K = NULL,
                      X_Tp1 = 1,
                      use_obs_SV = FALSE,
                      includeBasisInnovation = FALSE,
-                     computeDIC = TRUE){
+                     Con_mat = NULL){
   # Some options (for now):
   sample_nu = TRUE # Sample DF parameter, or fix at nu=3?
   sample_a1a2 = TRUE # Sample a1, a2, or fix at a1=2, a2=3?
@@ -939,6 +933,14 @@ dfosr_ind = function(Y, tau, X = NULL, K = NULL,
 
   # Initialize the FLC smoothing parameters (conditional MLE):
   tau_f_k = apply(Psi, 2, function(x) (ncol(splineInfo$Bmat) - (d+1))/crossprod(x, splineInfo$Omega)%*%x)
+
+  # Constraint matrix, if necessary:
+  if(!is.null(Con_mat)){
+    if(ncol(Con_mat) != m)
+      stop('The constraint matrix (Con_mat) must be Jc x m, where Jc is the number of constraints.')
+
+    BtCon = crossprod(splineInfo$Bmat, t(Con_mat))
+  } else BtCon = NULL
   #----------------------------------------------------------------------------
   # Predictors:
   if(!is.null(X)){
@@ -1081,11 +1083,11 @@ dfosr_ind = function(Y, tau, X = NULL, K = NULL,
   if(!is.na(match('fk', mcmc_params))) post.fk = array(NA, c(nsave, m, K))
   if(!is.na(match('alpha', mcmc_params))) post.alpha = array(NA, c(nsave, T, p, K))
   if(!is.na(match('mu_k', mcmc_params))) post.mu_k = array(NA, c(nsave, K))
-  if(!is.na(match('sigma_et', mcmc_params)) || computeDIC) post.sigma_et = array(NA, c(nsave, T))
-  if(!is.na(match('Yhat', mcmc_params)) || computeDIC) post.Yhat = array(NA, c(nsave, T, m))
+  if(!is.na(match('sigma_et', mcmc_params))) post.sigma_et = array(NA, c(nsave, T))
+  if(!is.na(match('Yhat', mcmc_params))) post.Yhat = array(NA, c(nsave, T, m))
   if(!is.na(match('Ypred', mcmc_params))) post.Ypred = array(NA, c(nsave, T, m))
   if(forecasting) {post.Yfore = post.Yfore_hat = array(NA, c(nsave, m))}
-  if(computeDIC) post_loglike = numeric(nsave)
+  post_log_like_point = array(NA, c(nsave, T*m))
 
   # Total number of MCMC simulations:
   nstot = nburn+(nskip+1)*(nsave)
@@ -1112,7 +1114,8 @@ dfosr_ind = function(Y, tau, X = NULL, K = NULL,
                    BtB = splineInfo$BtB, #diag(nrow(BtY)),
                    Omega = splineInfo$Omega,
                    lambda = tau_f_k,
-                   sigmat2 = sigma_et^2 + sigma_nu^2)
+                   sigmat2 = sigma_et^2 + sigma_nu^2,
+                   BtCon = BtCon)
     # And update the loading curves:
     Fmat = splineInfo$Bmat%*%Psi;
 
@@ -1403,11 +1406,11 @@ dfosr_ind = function(Y, tau, X = NULL, K = NULL,
         if(!is.na(match('fk', mcmc_params))) post.fk[isave,,] = Fmat
         if(!is.na(match('alpha', mcmc_params))) post.alpha[isave,,,] = alpha.arr
         if(!is.na(match('mu_k', mcmc_params))) post.mu_k[isave,] = mu_k
-        if(!is.na(match('sigma_et', mcmc_params)) || computeDIC) post.sigma_et[isave,] = sigma_et
-        if(!is.na(match('Yhat', mcmc_params)) || computeDIC) post.Yhat[isave,,] = Btheta
+        if(!is.na(match('sigma_et', mcmc_params))) post.sigma_et[isave,] = sigma_et
+        if(!is.na(match('Yhat', mcmc_params))) post.Yhat[isave,,] = Btheta
         if(!is.na(match('Ypred', mcmc_params))) post.Ypred[isave,,] = rnorm(n = T*m, mean = matrix(Btheta), sd = rep(sigma_et,m))
         if(forecasting) {post.Yfore[isave,] = Yfore; post.Yfore_hat[isave,] = Yfore_hat}
-        if(computeDIC) post_loglike[isave] = sum(dnorm(matrix(Yna), mean = matrix(Btheta), sd = rep(sigma_et,m), log = TRUE), na.rm = TRUE)
+        post_log_like_point[isave,] = dnorm(matrix(Yna), mean = matrix(Btheta), sd = rep(sigma_et,m), log = TRUE)
 
         # And reset the skip counter:
         skipcount = 0
@@ -1426,22 +1429,10 @@ dfosr_ind = function(Y, tau, X = NULL, K = NULL,
   if(!is.na(match('Ypred', mcmc_params))) mcmc_output$Ypred = post.Ypred*sdY
   if(forecasting) {mcmc_output$Yfore = post.Yfore*sdY; mcmc_output$Yfore_hat = post.Yfore_hat*sdY}
 
-  if(computeDIC){
-    # Log-likelihood evaluated at posterior means:
-    loglike_hat = sum(dnorm(matrix(Yna),
-                            mean = matrix(colMeans(post.Yhat)),
-                            sd = rep(colMeans(post.sigma_et), m),
-                            log = TRUE), na.rm=TRUE)
-
-    # Effective number of parameters (Note: two options)
-    p_d = c(2*(loglike_hat - mean(post_loglike)),
-            2*var(post_loglike))
-    # DIC:
-    DIC = -2*loglike_hat + 2*p_d
-
-    # Store the DIC and the effective number of parameters (p_d)
-    mcmc_output$DIC = DIC; mcmc_output$p_d = p_d
-  }
+  # Compute WAIC:
+  lppd = sum(log(colMeans(exp(post_log_like_point), na.rm=TRUE)), na.rm=TRUE)
+  mcmc_output$p_waic = sum(apply(post_log_like_point, 2, function(x) sd(x, na.rm=TRUE)^2), na.rm=TRUE)
+  mcmc_output$WAIC = -2*(lppd - mcmc_output$p_waic)
 
   print(paste('Total time: ', round((proc.time()[3] - timer0)/60), 'minutes'))
 
@@ -1479,8 +1470,8 @@ dfosr_ind = function(Y, tau, X = NULL, K = NULL,
 #' for the observation error variance
 #' @param includeBasisInnovation logical; when TRUE, include an iid basis coefficient term for residual correlation
 #' (i.e., the idiosyncratic error term for a factor model on the full basis matrix)
-#' @param computeDIC logical; if TRUE, compute the deviance information criterion \code{DIC}
-#' and the effective number of parameters \code{p_d}
+#' @param Con_mat a \code{Jc x m} matrix of constraints for the loading curves such that
+#' \code{Con_mat*fk = 0} for each loading curve \code{fk}; default is NULL for no constraints.
 #' @return A named list of the \code{nsave} MCMC samples for the parameters named in \code{mcmc_params}
 #'
 #'
@@ -1492,7 +1483,7 @@ dfosr_rw = function(Y, tau, X = NULL, K = NULL,
                     X_Tp1 = 1,
                     use_obs_SV = FALSE,
                     includeBasisInnovation = FALSE,
-                    computeDIC = TRUE){
+                    Con_mat = NULL){
   # Some options (for now):
   sample_nu = TRUE # Sample DF parameter, or fix at nu=3?
   sample_a1a2 = TRUE # Sample a1, a2, or fix at a1=2, a2=3?
@@ -1548,6 +1539,14 @@ dfosr_rw = function(Y, tau, X = NULL, K = NULL,
 
   # Initialize the FLC smoothing parameters (conditional MLE):
   tau_f_k = apply(Psi, 2, function(x) (ncol(splineInfo$Bmat) - (d+1))/crossprod(x, splineInfo$Omega)%*%x)
+
+  # Constraint matrix, if necessary:
+  if(!is.null(Con_mat)){
+    if(ncol(Con_mat) != m)
+      stop('The constraint matrix (Con_mat) must be Jc x m, where Jc is the number of constraints.')
+
+    BtCon = crossprod(splineInfo$Bmat, t(Con_mat))
+  } else BtCon = NULL
   #----------------------------------------------------------------------------
   # Predictors:
   if(!is.null(X)){
@@ -1686,11 +1685,11 @@ dfosr_rw = function(Y, tau, X = NULL, K = NULL,
   if(!is.na(match('beta', mcmc_params))) post.beta = array(NA, c(nsave, T, K))
   if(!is.na(match('fk', mcmc_params))) post.fk = array(NA, c(nsave, m, K))
   if(!is.na(match('alpha', mcmc_params))) post.alpha = array(NA, c(nsave, T, p, K))
-  if(!is.na(match('sigma_et', mcmc_params)) || computeDIC) post.sigma_et = array(NA, c(nsave, T))
-  if(!is.na(match('Yhat', mcmc_params)) || computeDIC) post.Yhat = array(NA, c(nsave, T, m))
+  if(!is.na(match('sigma_et', mcmc_params))) post.sigma_et = array(NA, c(nsave, T))
+  if(!is.na(match('Yhat', mcmc_params))) post.Yhat = array(NA, c(nsave, T, m))
   if(!is.na(match('Ypred', mcmc_params))) post.Ypred = array(NA, c(nsave, T, m))
   if(forecasting) {post.Yfore = post.Yfore_hat = array(NA, c(nsave, m))}
-  if(computeDIC) post_loglike = numeric(nsave)
+  post_log_like_point = array(NA, c(nsave, T*m))
 
   # Total number of MCMC simulations:
   nstot = nburn+(nskip+1)*(nsave)
@@ -1717,7 +1716,8 @@ dfosr_rw = function(Y, tau, X = NULL, K = NULL,
                    BtB = splineInfo$BtB, #diag(nrow(BtY)),
                    Omega = splineInfo$Omega,
                    lambda = tau_f_k,
-                   sigmat2 = sigma_et^2 + sigma_nu^2)
+                   sigmat2 = sigma_et^2 + sigma_nu^2,
+                   BtCon = BtCon)
     # And update the loading curves:
     Fmat = splineInfo$Bmat%*%Psi;
 
@@ -1987,11 +1987,12 @@ dfosr_rw = function(Y, tau, X = NULL, K = NULL,
         if(!is.na(match('beta', mcmc_params))) post.beta[isave,,] = Beta
         if(!is.na(match('fk', mcmc_params))) post.fk[isave,,] = Fmat
         if(!is.na(match('alpha', mcmc_params))) post.alpha[isave,,,] = alpha.arr
-        if(!is.na(match('sigma_et', mcmc_params)) || computeDIC) post.sigma_et[isave,] = sigma_et
-        if(!is.na(match('Yhat', mcmc_params)) || computeDIC) post.Yhat[isave,,] = Btheta # + sigma_e*rnorm(length(Y))
+        if(!is.na(match('sigma_et', mcmc_params))) post.sigma_et[isave,] = sigma_et
+        if(!is.na(match('Yhat', mcmc_params))) post.Yhat[isave,,] = Btheta # + sigma_e*rnorm(length(Y))
         if(!is.na(match('Ypred', mcmc_params))) post.Ypred[isave,,] = rnorm(n = T*m, mean = matrix(Btheta), sd = rep(sigma_et,m))
         if(forecasting) {post.Yfore[isave,] = Yfore; post.Yfore_hat[isave,] = Yfore_hat}
-        if(computeDIC) post_loglike[isave] = sum(dnorm(matrix(Yna), mean = matrix(Btheta), sd = rep(sigma_et,m), log = TRUE), na.rm = TRUE)
+        post_log_like_point[isave,] = dnorm(matrix(Yna), mean = matrix(Btheta), sd = rep(sigma_et,m), log = TRUE)
+
 
         # And reset the skip counter:
         skipcount = 0
@@ -2009,22 +2010,10 @@ dfosr_rw = function(Y, tau, X = NULL, K = NULL,
   if(!is.na(match('Ypred', mcmc_params))) mcmc_output$Ypred = post.Ypred*sdY
   if(forecasting) {mcmc_output$Yfore = post.Yfore*sdY; mcmc_output$Yfore_hat = post.Yfore_hat*sdY}
 
-  if(computeDIC){
-    # Log-likelihood evaluated at posterior means:
-    loglike_hat = sum(dnorm(matrix(Yna),
-                            mean = matrix(colMeans(post.Yhat)),
-                            sd = rep(colMeans(post.sigma_et), m),
-                            log = TRUE), na.rm=TRUE)
-
-    # Effective number of parameters (Note: two options)
-    p_d = c(2*(loglike_hat - mean(post_loglike)),
-            2*var(post_loglike))
-    # DIC:
-    DIC = -2*loglike_hat + 2*p_d
-
-    # Store the DIC and the effective number of parameters (p_d)
-    mcmc_output$DIC = DIC; mcmc_output$p_d = p_d
-  }
+  # Compute WAIC:
+  lppd = sum(log(colMeans(exp(post_log_like_point), na.rm=TRUE)), na.rm=TRUE)
+  mcmc_output$p_waic = sum(apply(post_log_like_point, 2, function(x) sd(x, na.rm=TRUE)^2), na.rm=TRUE)
+  mcmc_output$WAIC = -2*(lppd - mcmc_output$p_waic)
 
   print(paste('Total time: ', round((proc.time()[3] - timer0)/60), 'minutes'))
 
@@ -2065,8 +2054,8 @@ dfosr_rw = function(Y, tau, X = NULL, K = NULL,
 #' for the observation error variance
 #' @param includeBasisInnovation logical; when TRUE, include an iid basis coefficient term for residual correlation
 #' (i.e., the idiosyncratic error term for a factor model on the full basis matrix)
-#' @param computeDIC logical; if TRUE, compute the deviance information criterion \code{DIC}
-#' and the effective number of parameters \code{p_d}
+#' @param Con_mat a \code{Jc x m} matrix of constraints for the loading curves such that
+#' \code{Con_mat*fk = 0} for each loading curve \code{fk}; default is NULL for no constraints.
 #' @return A named list of the \code{nsave} MCMC samples for the parameters named in \code{mcmc_params}
 #'
 #'
@@ -2078,7 +2067,7 @@ dfosr_ar = function(Y, tau, X = NULL, K = NULL,
                     X_Tp1 = 1,
                     use_obs_SV = FALSE,
                     includeBasisInnovation = FALSE,
-                    computeDIC = TRUE){
+                    Con_mat = NULL){
   # Some options (for now):
   sample_nu = TRUE # Sample DF parameter, or fix at nu=3?
   sample_a1a2 = TRUE # Sample a1, a2, or fix at a1=2, a2=3?
@@ -2134,6 +2123,14 @@ dfosr_ar = function(Y, tau, X = NULL, K = NULL,
 
   # Initialize the FLC smoothing parameters (conditional MLE):
   tau_f_k = apply(Psi, 2, function(x) (ncol(splineInfo$Bmat) - (d+1))/crossprod(x, splineInfo$Omega)%*%x)
+
+  # Constraint matrix, if necessary:
+  if(!is.null(Con_mat)){
+    if(ncol(Con_mat) != m)
+      stop('The constraint matrix (Con_mat) must be Jc x m, where Jc is the number of constraints.')
+
+    BtCon = crossprod(splineInfo$Bmat, t(Con_mat))
+  } else BtCon = NULL
   #----------------------------------------------------------------------------
   # Predictors:
   if(!is.null(X)){
@@ -2290,12 +2287,12 @@ dfosr_ar = function(Y, tau, X = NULL, K = NULL,
   if(!is.na(match('fk', mcmc_params))) post.fk = array(NA, c(nsave, m, K))
   if(!is.na(match('alpha', mcmc_params))) post.alpha = array(NA, c(nsave, T, p, K))
   if(!is.na(match('mu_k', mcmc_params))) post.mu_k = array(NA, c(nsave, K))
-  if(!is.na(match('sigma_et', mcmc_params)) || computeDIC) post.sigma_et = array(NA, c(nsave, T))
+  if(!is.na(match('sigma_et', mcmc_params))) post.sigma_et = array(NA, c(nsave, T))
   if(!is.na(match('ar_phi', mcmc_params))) post.ar_phi = array(NA, c(nsave, K))
-  if(!is.na(match('Yhat', mcmc_params)) || computeDIC) post.Yhat = array(NA, c(nsave, T, m))
+  if(!is.na(match('Yhat', mcmc_params))) post.Yhat = array(NA, c(nsave, T, m))
   if(!is.na(match('Ypred', mcmc_params))) post.Ypred = array(NA, c(nsave, T, m))
   if(forecasting) {post.Yfore = post.Yfore_hat = array(NA, c(nsave, m))}
-  if(computeDIC) post_loglike = numeric(nsave)
+  post_log_like_point = array(NA, c(nsave, T*m))
 
   # Total number of MCMC simulations:
   nstot = nburn+(nskip+1)*(nsave)
@@ -2322,7 +2319,8 @@ dfosr_ar = function(Y, tau, X = NULL, K = NULL,
                    BtB = splineInfo$BtB, #diag(nrow(BtY)),
                    Omega = splineInfo$Omega,
                    lambda = tau_f_k,
-                   sigmat2 = sigma_et^2 + sigma_nu^2)
+                   sigmat2 = sigma_et^2 + sigma_nu^2,
+                   BtCon = BtCon)
     # And update the loading curves:
     Fmat = splineInfo$Bmat%*%Psi;
 
@@ -2638,12 +2636,12 @@ dfosr_ar = function(Y, tau, X = NULL, K = NULL,
         if(!is.na(match('fk', mcmc_params))) post.fk[isave,,] = Fmat
         if(!is.na(match('alpha', mcmc_params))) post.alpha[isave,,,] = alpha.arr
         if(!is.na(match('mu_k', mcmc_params))) post.mu_k[isave,] = mu_k
-        if(!is.na(match('sigma_et', mcmc_params)) || computeDIC) post.sigma_et[isave,] = sigma_et
+        if(!is.na(match('sigma_et', mcmc_params))) post.sigma_et[isave,] = sigma_et
         if(!is.na(match('ar_phi', mcmc_params))) post.ar_phi[isave,] = ar_int
-        if(!is.na(match('Yhat', mcmc_params)) || computeDIC) post.Yhat[isave,,] = Btheta # + sigma_e*rnorm(length(Y))
+        if(!is.na(match('Yhat', mcmc_params))) post.Yhat[isave,,] = Btheta # + sigma_e*rnorm(length(Y))
         if(!is.na(match('Ypred', mcmc_params))) post.Ypred[isave,,] = rnorm(n = T*m, mean = matrix(Btheta), sd = rep(sigma_et,m))
         if(forecasting) {post.Yfore[isave,] = Yfore; post.Yfore_hat[isave,] = Yfore_hat}
-        if(computeDIC) post_loglike[isave] = sum(dnorm(matrix(Yna), mean = matrix(Btheta), sd = rep(sigma_et,m), log = TRUE), na.rm = TRUE)
+        post_log_like_point[isave,] = dnorm(matrix(Yna), mean = matrix(Btheta), sd = rep(sigma_et,m), log = TRUE)
 
         # And reset the skip counter:
         skipcount = 0
@@ -2663,22 +2661,10 @@ dfosr_ar = function(Y, tau, X = NULL, K = NULL,
   if(!is.na(match('Ypred', mcmc_params))) mcmc_output$Ypred = post.Ypred*sdY
   if(forecasting) {mcmc_output$Yfore = post.Yfore*sdY; mcmc_output$Yfore_hat = post.Yfore_hat*sdY}
 
-  if(computeDIC){
-    # Log-likelihood evaluated at posterior means:
-    loglike_hat = sum(dnorm(matrix(Yna),
-                            mean = matrix(colMeans(post.Yhat)),
-                            sd = rep(colMeans(post.sigma_et), m),
-                            log = TRUE), na.rm=TRUE)
-
-    # Effective number of parameters (Note: two options)
-    p_d = c(2*(loglike_hat - mean(post_loglike)),
-            2*var(post_loglike))
-    # DIC:
-    DIC = -2*loglike_hat + 2*p_d
-
-    # Store the DIC and the effective number of parameters (p_d)
-    mcmc_output$DIC = DIC; mcmc_output$p_d = p_d
-  }
+  # Compute WAIC:
+  lppd = sum(log(colMeans(exp(post_log_like_point), na.rm=TRUE)), na.rm=TRUE)
+  mcmc_output$p_waic = sum(apply(post_log_like_point, 2, function(x) sd(x, na.rm=TRUE)^2), na.rm=TRUE)
+  mcmc_output$WAIC = -2*(lppd - mcmc_output$p_waic)
 
   print(paste('Total time: ', round((proc.time()[3] - timer0)/60), 'minutes'))
 
@@ -2717,8 +2703,6 @@ dfosr_ar = function(Y, tau, X = NULL, K = NULL,
 #' @param X_Tp1 the \code{p x 1} matrix of predictors at the forecasting time point \code{T + 1}
 #' @param use_obs_SV logical; when TRUE, include a stochastic volatility model
 #' for the observation error variance
-#' @param computeDIC logical; if TRUE, compute the deviance information criterion \code{DIC}
-#' and the effective number of parameters \code{p_d}
 #' @return A named list of the \code{nsave} MCMC samples for the parameters named in \code{mcmc_params}
 #'
 #'
@@ -2731,8 +2715,7 @@ dfosr_basis_ar = function(Y, tau, X = NULL,
                           nsave = 1000, nburn = 1000, nskip = 2,
                           mcmc_params = list("beta", "fk", "alpha", "mu_k", "ar_phi"),
                           X_Tp1 = 1,
-                          use_obs_SV = FALSE,
-                          computeDIC = TRUE){
+                          use_obs_SV = FALSE){
   #----------------------------------------------------------------------------
   # Assume that we've done checks elsewhere
   #----------------------------------------------------------------------------
@@ -2943,12 +2926,12 @@ dfosr_basis_ar = function(Y, tau, X = NULL,
   if(!is.na(match('fk', mcmc_params))) post.fk = array(NA, c(nsave, m, K))
   if(!is.na(match('alpha', mcmc_params))) post.alpha = array(NA, c(nsave, T, p, K))
   if(!is.na(match('mu_k', mcmc_params))) post.mu_k = array(NA, c(nsave, K))
-  if(!is.na(match('sigma_et', mcmc_params)) || computeDIC) post.sigma_et = array(NA, c(nsave, T))
+  if(!is.na(match('sigma_et', mcmc_params))) post.sigma_et = array(NA, c(nsave, T))
   if(!is.na(match('ar_phi', mcmc_params))) post.ar_phi = array(NA, c(nsave, K))
-  if(!is.na(match('Yhat', mcmc_params)) || computeDIC) post.Yhat = array(NA, c(nsave, T, m))
+  if(!is.na(match('Yhat', mcmc_params))) post.Yhat = array(NA, c(nsave, T, m))
   if(!is.na(match('Ypred', mcmc_params))) post.Ypred = array(NA, c(nsave, T, m))
   if(forecasting) {post.Yfore = post.Yfore_hat = array(NA, c(nsave, m))}
-  if(computeDIC) post_loglike = numeric(nsave)
+  post_log_like_point = array(NA, c(nsave, T*m))
 
   # Total number of MCMC simulations:
   nstot = nburn+(nskip+1)*(nsave)
@@ -3227,12 +3210,12 @@ dfosr_basis_ar = function(Y, tau, X = NULL,
         if(!is.na(match('fk', mcmc_params))) post.fk[isave,,] = Fmat
         if(!is.na(match('alpha', mcmc_params))) post.alpha[isave,,,] = alpha.arr
         if(!is.na(match('mu_k', mcmc_params))) post.mu_k[isave,] = mu_k
-        if(!is.na(match('sigma_et', mcmc_params)) || computeDIC) post.sigma_et[isave,] = sigma_et
+        if(!is.na(match('sigma_et', mcmc_params))) post.sigma_et[isave,] = sigma_et
         if(!is.na(match('ar_phi', mcmc_params))) post.ar_phi[isave,] = ar_int
-        if(!is.na(match('Yhat', mcmc_params)) || computeDIC) post.Yhat[isave,,] = Btheta
+        if(!is.na(match('Yhat', mcmc_params))) post.Yhat[isave,,] = Btheta
         if(!is.na(match('Ypred', mcmc_params))) post.Ypred[isave,,] = rnorm(n = T*m, mean = matrix(Btheta), sd = rep(sigma_et,m))
         if(forecasting) {post.Yfore[isave,] = Yfore; post.Yfore_hat[isave,] = Yfore_hat}
-        if(computeDIC) post_loglike[isave] = sum(dnorm(matrix(Yna), mean = matrix(Btheta), sd = rep(sigma_et,m), log = TRUE), na.rm = TRUE)
+        post_log_like_point[isave,] = dnorm(matrix(Yna), mean = matrix(Btheta), sd = rep(sigma_et,m), log = TRUE)
 
         # And reset the skip counter:
         skipcount = 0
@@ -3252,22 +3235,10 @@ dfosr_basis_ar = function(Y, tau, X = NULL,
   if(!is.na(match('Ypred', mcmc_params))) mcmc_output$Ypred = post.Ypred*sdY
   if(forecasting) {mcmc_output$Yfore = post.Yfore*sdY; mcmc_output$Yfore_hat = post.Yfore_hat*sdY}
 
-  if(computeDIC){
-    # Log-likelihood evaluated at posterior means:
-    loglike_hat = sum(dnorm(matrix(Yna),
-                            mean = matrix(colMeans(post.Yhat)),
-                            sd = rep(colMeans(post.sigma_et), m),
-                            log = TRUE), na.rm=TRUE)
-
-    # Effective number of parameters (Note: two options)
-    p_d = c(2*(loglike_hat - mean(post_loglike)),
-            2*var(post_loglike))
-    # DIC:
-    DIC = -2*loglike_hat + 2*p_d
-
-    # Store the DIC and the effective number of parameters (p_d)
-    mcmc_output$DIC = DIC; mcmc_output$p_d = p_d
-  }
+  # Compute WAIC:
+  lppd = sum(log(colMeans(exp(post_log_like_point), na.rm=TRUE)), na.rm=TRUE)
+  mcmc_output$p_waic = sum(apply(post_log_like_point, 2, function(x) sd(x, na.rm=TRUE)^2), na.rm=TRUE)
+  mcmc_output$WAIC = -2*(lppd - mcmc_output$p_waic)
 
   print(paste('Total time: ', round((proc.time()[3] - timer0)/60), 'minutes'))
 

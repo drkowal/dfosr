@@ -6,7 +6,7 @@
 \usage{
 fosr(Y, tau, X = NULL, K = NULL, nsave = 1000, nburn = 1000,
   nskip = 3, mcmc_params = list("beta", "fk", "alpha", "sigma_e",
-  "sigma_g"), computeDIC = TRUE)
+  "sigma_g"), Con_mat = NULL)
 }
 \arguments{
 \item{Y}{the \code{T x m} data observation matrix, where \code{T} is the number of time points and \code{m} is the number of observation points (\code{NA}s allowed)}
@@ -37,8 +37,8 @@ must be one or more of
 \item "Ypred" (posterior predictive values)
 }}
 
-\item{computeDIC}{logical; if TRUE, compute the deviance information criterion \code{DIC}
-and the effective number of parameters \code{p_d}}
+\item{Con_mat}{a \code{Jc x m} matrix of constraints for the loading curves such that
+\code{Con_mat*fk = 0} for each loading curve \code{fk}; default is NULL for no constraints.}
 }
 \value{
 A named list of the \code{nsave} MCMC samples for the parameters named in \code{mcmc_params}
