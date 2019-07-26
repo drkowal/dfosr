@@ -122,7 +122,8 @@ forecast_dfosr = function(X_Tp1 = NULL,
 #' @param p_1 number of true nonzero regression coefficients
 #' @param use_dynamic_reg logical; if TRUE, simulate dynamic regression coefficients; otherwise static
 #' @param sparse_factors logical; if TRUE, then for each nonzero predictor j,
-#' sample a subset of k=1:K_true factors to be nonzero#'
+#' sample a subset of k=1:K_true factors to be nonzero
+#' @param use_obs_SV logical; if TRUE, include stochastic volatility term for the error variance
 #' @param ar1 AR(1) coefficient for time-correlated predictors
 #' @param prop_missing proportion of missing data (between 0 and 1); default is zero
 #'
@@ -153,10 +154,11 @@ simulate_dfosr = function(T = 200,
                          m = 100,
                          RSNR = 5,
                          K_true = 4,
-                         p_0 = 10,
-                         p_1 = 5,
+                         p_0 = 2,
+                         p_1 = 2,
                          use_dynamic_reg = TRUE,
-                         sparse_factors = TRUE,
+                         sparse_factors = FALSE,
+                         use_obs_SV = FALSE,
                          ar1 = 0,
                          prop_missing = 0){
   # Number of predictors:
@@ -182,6 +184,10 @@ simulate_dfosr = function(T = 200,
   # p = 1 Intercept coefficients: just use K:1
   alpha_arr_true[,1,] = matrix(rep(1/(1:K_true), each = T), nrow = T)
 
+  # Factor standard deviation (or scale factor) for each k:
+  #sd_k = 1/(1:K_true)
+  sd_k = sqrt(.75^(1:K_true - 1))
+
   # p > 1: Possibly nonzero, possibly dynamic coefficients
   if(p_1 > 0){for(j in 1:p_1){
     # Which factors are nonzero for predictor j?
@@ -192,12 +198,10 @@ simulate_dfosr = function(T = 200,
     # Among nonzero factors, simulate dynamic (w/ sparse jumps) or static coefficients:
     for(k in k_p) {
       if(use_dynamic_reg){
-        alpha_arr_true[,j+1,k] = 1/k*rnorm(n = 1) + 1/k*cumsum(rnorm(n = T)*rbinom(n = T, size = 1, prob = 0.01))
-      } else alpha_arr_true[,j+1, k] = 1/k*rnorm(n = 1)
+        alpha_arr_true[,j+1,k] = sd_k[k]*rnorm(n = 1) + sd_k[k]*cumsum(rnorm(n = T)*(rbinom(n = T, size = 1, prob = 0.01)))
+      } else alpha_arr_true[,j+1, k] = sd_k[k]*rnorm(n = 1)
     }
-
   }}
-
 
   # True regression coefficient functions:
   alpha_tilde_true = array(0, c(T, p, m))
@@ -205,7 +209,7 @@ simulate_dfosr = function(T = 200,
 
   # Dynamic factors:
   Beta_true = matrix(0, nrow = T, ncol = K_true)
-  for(k in 1:K_true) Beta_true[,k] = rowSums(X*alpha_arr_true[,,k]) + arima.sim(n = T, list(ar = 0.8), sd = sqrt(1-0.8^2)*1/k)
+  for(k in 1:K_true) Beta_true[,k] = rowSums(X*alpha_arr_true[,,k]) + arima.sim(n = T, list(ar = 0.8), sd = sqrt(1-0.8^2)*sd_k[k])
 
   # True FTS:
   Y_true = tcrossprod(Beta_true, F_true)
@@ -214,7 +218,12 @@ simulate_dfosr = function(T = 200,
   sigma_true = sd(Y_true)/RSNR
 
   # Observed data:
-  Y = Y_true + sigma_true*rnorm(m*T)
+  if(use_obs_SV){
+    sigma_true = sigma_true*exp(1/2*arima.sim(n = T, list(ar = 0.9), sd = sqrt(1-0.9^2)))
+    Y = Y_true + rep(sigma_true,  m)*rnorm(m*T)
+  } else {
+    Y = Y_true + sigma_true*rnorm(m*T)
+  }
 
   # Remove any observation points:
   if(prop_missing > 0 ) Y[sample(1:length(Y), prop_missing*length(Y))] = NA
@@ -1156,7 +1165,7 @@ uni.slice <- function (x0, g, w=1, m=Inf, lower=-Inf, upper=+Inf, gx0=NULL)
 }
 
 # Just add these for general use:
-#' @importFrom stats quantile rgamma rnorm sd splinefun var rexp runif arima arima.sim dbeta dgamma dist dnorm dunif fitted lm median poly rbinom dnbinom rnbinom rpois
+#' @importFrom stats predict quantile rgamma rnorm sd splinefun var rexp runif arima arima.sim dbeta dgamma dist dnorm dunif fitted lm median poly rbinom dnbinom rnbinom rpois
 NULL
 
 #' @useDynLib dfosr

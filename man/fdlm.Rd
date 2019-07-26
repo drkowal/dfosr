@@ -4,10 +4,9 @@
 \alias{fdlm}
 \title{MCMC Sampling Algorithm for the Functional Dynamic Linear Model}
 \usage{
-fdlm(Y, tau, K = NULL, factor_model = "RW", nsave = 1000,
-  nburn = 1000, nskip = 3, mcmc_params = list("beta", "fk"),
-  use_obs_SV = FALSE, X_Tp1 = 1, includeBasisInnovation = FALSE,
-  Con_mat = NULL)
+fdlm(Y, tau, K = NULL, nsave = 1000, nburn = 1000, nskip = 3,
+  mcmc_params = list("beta", "fk"), use_obs_SV = FALSE, X_Tp1 = 1,
+  includeBasisInnovation = FALSE, Con_mat = NULL)
 }
 \arguments{
 \item{Y}{the \code{T x m} data observation matrix, where \code{T} is the number of time points and \code{m} is the number of observation points (\code{NA}s allowed)}
@@ -15,14 +14,6 @@ fdlm(Y, tau, K = NULL, factor_model = "RW", nsave = 1000,
 \item{tau}{the \code{m x d} matrix of coordinates of observation points}
 
 \item{K}{the number of factors; if NULL, use SVD-based proportion of variability explained}
-
-\item{factor_model}{model for the (dynamic) factors;
-must be one of
-\itemize{
-\item "IND" (independent errors)
-\item "AR" (stationary autoregression of order 1)
-\item "RW" (random walk model)
-}}
 
 \item{nsave}{number of MCMC iterations to record}
 
@@ -59,8 +50,7 @@ A named list of the \code{nsave} MCMC samples for the parameters named in \code{
 }
 \description{
 Runs the MCMC for the functional dynamic linear model (with no predictor variables).
-Models for the (dynamic) factors include independent factors, an AR(1) model,
-and a random walk model.
+The dynamic factors are modeled using an AR(1) model.
 }
 \note{
 If \code{Tm} is large, then storing all posterior samples for \code{Yhat} or \code{Ypred}, which are \code{nsave x T x m},  may be inefficient
@@ -74,7 +64,6 @@ T = nrow(Y); m = ncol(Y); # Dimensions
 
 # Run the MCMC w/ K = 6:
 out = fdlm(Y = Y, tau = tau, K = 6,
-           factor_model = 'AR',
            mcmc_params = list("beta", "fk", "Yhat", "Ypred"))
 
 # Plot the factors:

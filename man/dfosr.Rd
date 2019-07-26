@@ -4,11 +4,10 @@
 \alias{dfosr}
 \title{MCMC Sampling Algorithm for the Dynamic Function-on-Scalars Regression Model}
 \usage{
-dfosr(Y, tau, X = NULL, K = NULL, factor_model = "AR",
-  use_dynamic_reg = TRUE, nsave = 1000, nburn = 1000, nskip = 3,
-  mcmc_params = list("beta", "fk", "alpha", "mu_k", "ar_phi"),
-  X_Tp1 = 1, use_obs_SV = FALSE, includeBasisInnovation = FALSE,
-  Con_mat = NULL)
+dfosr(Y, tau, X = NULL, K = NULL, nsave = 1000, nburn = 1000,
+  nskip = 3, mcmc_params = list("beta", "fk", "alpha", "mu_k",
+  "ar_phi"), X_Tp1 = 1, use_obs_SV = FALSE,
+  includeBasisInnovation = FALSE, Con_mat = NULL)
 }
 \arguments{
 \item{Y}{the \code{T x m} data observation matrix, where \code{T} is the number of time points and \code{m} is the number of observation points (\code{NA}s allowed)}
@@ -18,17 +17,6 @@ dfosr(Y, tau, X = NULL, K = NULL, factor_model = "AR",
 \item{X}{the \code{T x p} matrix of predictors; if NULL, only include an intercept}
 
 \item{K}{the number of factors; if NULL, use SVD-based proportion of variability explained}
-
-\item{factor_model}{model for the factor-level (regression) errors;
-must be one of
-\itemize{
-\item "IND" (independent errors)
-\item "AR" (stationary autoregression of order 1)
-\item "RW" (random walk model)
-}}
-
-\item{use_dynamic_reg}{logical; if TRUE, regression coefficients are dynamic
-(with random walk models), otherwise independent}
 
 \item{nsave}{number of MCMC iterations to record}
 
@@ -67,9 +55,9 @@ A named list of the \code{nsave} MCMC samples for the parameters named in \code{
 }
 \description{
 Runs the MCMC for the dynamic function-on-scalars regression model based on
-an reduced-rank expansion. We include several options for dynamics in the model,
-including autoregressive, random walk, or independent errors, as well as
-dynamic or non-dynamic regression coefficients. Default shrinkage priors are assumed.
+an reduced-rank expansion. The dynamic regression coefficients are modeled
+as random walks, with AR(1) models for the errors. Various shrinkage priors
+are available for the dynamic coefficient innovation terms.
 }
 \note{
 This sampler loops over the k=1,...,K factors,
@@ -84,8 +72,6 @@ T = nrow(Y); m = ncol(Y); p = ncol(X) # Dimensions
 
 # Run the MCMC w/ K = 6:
 out = dfosr(Y = Y, tau = tau, X = X, K = 6,
-           factor_model = 'AR',
-           use_dynamic_reg = TRUE,
            mcmc_params = list("beta", "fk", "alpha", "Yhat", "Ypred"))
 
 # Plot a dynamic regression coefficient function

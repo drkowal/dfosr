@@ -4,9 +4,9 @@
 \alias{simulate_dfosr}
 \title{Simulate a dynamic function-on-scalars regression model}
 \usage{
-simulate_dfosr(T = 200, m = 100, RSNR = 5, K_true = 4, p_0 = 10,
-  p_1 = 5, use_dynamic_reg = TRUE, sparse_factors = TRUE, ar1 = 0,
-  prop_missing = 0)
+simulate_dfosr(T = 200, m = 100, RSNR = 5, K_true = 4, p_0 = 2,
+  p_1 = 2, use_dynamic_reg = TRUE, sparse_factors = FALSE,
+  use_obs_SV = FALSE, ar1 = 0, prop_missing = 0)
 }
 \arguments{
 \item{T}{number of observed curves (i.e., number of time points)}
@@ -24,7 +24,9 @@ simulate_dfosr(T = 200, m = 100, RSNR = 5, K_true = 4, p_0 = 10,
 \item{use_dynamic_reg}{logical; if TRUE, simulate dynamic regression coefficients; otherwise static}
 
 \item{sparse_factors}{logical; if TRUE, then for each nonzero predictor j,
-sample a subset of k=1:K_true factors to be nonzero#'}
+sample a subset of k=1:K_true factors to be nonzero}
+
+\item{use_obs_SV}{logical; if TRUE, include stochastic volatility term for the error variance}
 
 \item{ar1}{AR(1) coefficient for time-correlated predictors}
 
