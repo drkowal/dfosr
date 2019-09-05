@@ -311,7 +311,7 @@ fosr = function(Y, tau, X = NULL, K = NULL,
   if(!is.na(match('sigma_g', mcmc_params))) post.sigma_g = array(NA, c(nsave, T, K))
   if(!is.na(match('Yhat', mcmc_params))) post.Yhat = array(NA, c(nsave, T, m))
   if(!is.na(match('Ypred', mcmc_params))) post.Ypred = array(NA, c(nsave, T, m))
-  post_log_like_point = array(NA, c(nsave, T*m))
+  post_log_like_point = array(NA, c(nsave, T, m))
 
   # Total number of MCMC simulations:
   nstot = nburn+(nskip+1)*(nsave)
@@ -491,7 +491,7 @@ fosr = function(Y, tau, X = NULL, K = NULL,
         if(!is.na(match('sigma_g', mcmc_params))) post.sigma_g[isave,,] = sigma_gamma_tk
         if(!is.na(match('Yhat', mcmc_params))) post.Yhat[isave,,] = Yhat
         if(!is.na(match('Ypred', mcmc_params))) post.Ypred[isave,,] = rnorm(n = T*m, mean = matrix(Yhat), sd = rep(sigma_et,m))
-        post_log_like_point[isave,] = dnorm(matrix(Yna), mean = matrix(Yhat), sd = rep(sigma_et,m), log = TRUE)
+        post_log_like_point[isave,,] = dnorm(Yna, mean = Yhat, sd = rep(sigma_et,m), log = TRUE)
 
         # And reset the skip counter:
         skipcount = 0
@@ -509,9 +509,12 @@ fosr = function(Y, tau, X = NULL, K = NULL,
   if(!is.na(match('Yhat', mcmc_params))) mcmc_output$Yhat = post.Yhat*sdY
   if(!is.na(match('Ypred', mcmc_params))) mcmc_output$Ypred = post.Ypred*sdY
 
+  # Include log-pointwise density:
+  mcmc_output$lpd = post_log_like_point - log(sdY)
+
   # Compute WAIC:
   lppd = sum(log(colMeans(exp(post_log_like_point), na.rm=TRUE)), na.rm=TRUE)
-  mcmc_output$p_waic = sum(apply(post_log_like_point, 2, function(x) sd(x, na.rm=TRUE)^2), na.rm=TRUE)
+  mcmc_output$p_waic = sum(apply(post_log_like_point, 2:3, function(x) sd(x, na.rm=TRUE)^2), na.rm=TRUE)
   mcmc_output$WAIC = -2*(lppd - mcmc_output$p_waic)
 
   print(paste('Total time: ', round((proc.time()[3] - timer0)), 'seconds'))
@@ -817,7 +820,7 @@ fosr_ar = function(Y, tau, X = NULL, K = NULL,
   if(!is.na(match('Yhat', mcmc_params))) post.Yhat = array(NA, c(nsave, T, m))
   if(!is.na(match('Ypred', mcmc_params))) post.Ypred = array(NA, c(nsave, T, m))
   if(forecasting) {post.Yfore = post.Yfore_hat = array(NA, c(nsave, m)); post.sigmafore = array(NA, c(nsave, 1))}
-  post_log_like_point = array(NA, c(nsave, T*m))
+  post_log_like_point = array(NA, c(nsave, T, m))
 
   # Total number of MCMC simulations:
   nstot = nburn+(nskip+1)*(nsave)
@@ -1107,7 +1110,7 @@ fosr_ar = function(Y, tau, X = NULL, K = NULL,
         if(!is.na(match('Yhat', mcmc_params))) post.Yhat[isave,,] = Btheta # + sigma_e*rnorm(length(Y))
         if(!is.na(match('Ypred', mcmc_params))) post.Ypred[isave,,] = rnorm(n = T*m, mean = matrix(Btheta), sd = rep(sigma_et,m))
         if(forecasting) {post.Yfore[isave,] = Yfore; post.Yfore_hat[isave,] = Yfore_hat; post.sigmafore[isave,] = sigma_fore}
-        post_log_like_point[isave,] = dnorm(matrix(Yna), mean = matrix(Btheta), sd = rep(sigma_et,m), log = TRUE)
+        post_log_like_point[isave,,] = dnorm(Yna, mean = Btheta, sd = rep(sigma_et,m), log = TRUE)
 
         # And reset the skip counter:
         skipcount = 0
@@ -1127,9 +1130,12 @@ fosr_ar = function(Y, tau, X = NULL, K = NULL,
   if(!is.na(match('Ypred', mcmc_params))) mcmc_output$Ypred = post.Ypred*sdY
   if(forecasting) {mcmc_output$Yfore = post.Yfore*sdY; mcmc_output$Yfore_hat = post.Yfore_hat*sdY; mcmc_output$sigma_fore = post.sigmafore*sdY}
 
+  # Include log-pointwise density:
+  mcmc_output$lpd = post_log_like_point - log(sdY)
+
   # Compute WAIC:
   lppd = sum(log(colMeans(exp(post_log_like_point), na.rm=TRUE)), na.rm=TRUE)
-  mcmc_output$p_waic = sum(apply(post_log_like_point, 2, function(x) sd(x, na.rm=TRUE)^2), na.rm=TRUE)
+  mcmc_output$p_waic = sum(apply(post_log_like_point, 2:3, function(x) sd(x, na.rm=TRUE)^2), na.rm=TRUE)
   mcmc_output$WAIC = -2*(lppd - mcmc_output$p_waic)
 
   print(paste('Total time: ', round((proc.time()[3] - timer0)/60), 'minutes'))
@@ -1465,7 +1471,7 @@ dfosr = function(Y, tau, X = NULL, K = NULL,
   if(!is.na(match('Yhat', mcmc_params))) post.Yhat = array(NA, c(nsave, T, m))
   if(!is.na(match('Ypred', mcmc_params))) post.Ypred = array(NA, c(nsave, T, m))
   if(forecasting) {post.Yfore = post.Yfore_hat = array(NA, c(nsave, m)); post.sigmafore = array(NA, c(nsave, 1))}
-  post_log_like_point = array(NA, c(nsave, T*m))
+  post_log_like_point = array(NA, c(nsave, T, m))
 
   # Total number of MCMC simulations:
   nstot = nburn+(nskip+1)*(nsave)
@@ -1789,7 +1795,7 @@ dfosr = function(Y, tau, X = NULL, K = NULL,
         if(!is.na(match('Yhat', mcmc_params))) post.Yhat[isave,,] = Btheta # + sigma_e*rnorm(length(Y))
         if(!is.na(match('Ypred', mcmc_params))) post.Ypred[isave,,] = rnorm(n = T*m, mean = matrix(Btheta), sd = rep(sigma_et,m))
         if(forecasting) {post.Yfore[isave,] = Yfore; post.Yfore_hat[isave,] = Yfore_hat; post.sigmafore[isave,] = sigma_fore}
-        post_log_like_point[isave,] = dnorm(matrix(Yna), mean = matrix(Btheta), sd = rep(sigma_et,m), log = TRUE)
+        post_log_like_point[isave,,] = dnorm(Yna, mean = Btheta, sd = rep(sigma_et,m), log = TRUE)
 
         # And reset the skip counter:
         skipcount = 0
@@ -1809,9 +1815,12 @@ dfosr = function(Y, tau, X = NULL, K = NULL,
   if(!is.na(match('Ypred', mcmc_params))) mcmc_output$Ypred = post.Ypred*sdY
   if(forecasting) {mcmc_output$Yfore = post.Yfore*sdY; mcmc_output$Yfore_hat = post.Yfore_hat*sdY; mcmc_output$sigma_fore = post.sigmafore*sdY}
 
+  # Include log-pointwise density:
+  mcmc_output$lpd = post_log_like_point - log(sdY)
+
   # Compute WAIC:
   lppd = sum(log(colMeans(exp(post_log_like_point), na.rm=TRUE)), na.rm=TRUE)
-  mcmc_output$p_waic = sum(apply(post_log_like_point, 2, function(x) sd(x, na.rm=TRUE)^2), na.rm=TRUE)
+  mcmc_output$p_waic = sum(apply(post_log_like_point, 2:3, function(x) sd(x, na.rm=TRUE)^2), na.rm=TRUE)
   mcmc_output$WAIC = -2*(lppd - mcmc_output$p_waic)
 
   print(paste('Total time: ', round((proc.time()[3] - timer0)/60), 'minutes'))
@@ -2099,7 +2108,7 @@ dfosr_basis = function(Y, tau, X = NULL,
   if(!is.na(match('Yhat', mcmc_params))) post.Yhat = array(NA, c(nsave, T, m))
   if(!is.na(match('Ypred', mcmc_params))) post.Ypred = array(NA, c(nsave, T, m))
   if(forecasting) {post.Yfore = post.Yfore_hat = array(NA, c(nsave, m)); post.sigmafore = array(NA, c(nsave, 1))}
-  post_log_like_point = array(NA, c(nsave, T*m))
+  post_log_like_point = array(NA, c(nsave, T, m))
 
   # Total number of MCMC simulations:
   nstot = nburn+(nskip+1)*(nsave)
@@ -2392,7 +2401,7 @@ dfosr_basis = function(Y, tau, X = NULL,
         if(!is.na(match('Yhat', mcmc_params))) post.Yhat[isave,,] = Btheta
         if(!is.na(match('Ypred', mcmc_params))) post.Ypred[isave,,] = rnorm(n = T*m, mean = matrix(Btheta), sd = rep(sigma_et,m))
         if(forecasting) {post.Yfore[isave,] = Yfore; post.Yfore_hat[isave,] = Yfore_hat; post.sigmafore[isave,] = sigma_fore}
-        post_log_like_point[isave,] = dnorm(matrix(Yna), mean = matrix(Btheta), sd = rep(sigma_et,m), log = TRUE)
+        post_log_like_point[isave,,] = dnorm(Yna, mean = Btheta, sd = rep(sigma_et,m), log = TRUE)
 
         # And reset the skip counter:
         skipcount = 0
@@ -2412,9 +2421,12 @@ dfosr_basis = function(Y, tau, X = NULL,
   if(!is.na(match('Ypred', mcmc_params))) mcmc_output$Ypred = post.Ypred*sdY
   if(forecasting) {mcmc_output$Yfore = post.Yfore*sdY; mcmc_output$Yfore_hat = post.Yfore_hat*sdY; mcmc_output$sigma_fore = post.sigmafore*sdY}
 
+  # Include log-pointwise density:
+  mcmc_output$lpd = post_log_like_point - log(sdY)
+
   # Compute WAIC:
   lppd = sum(log(colMeans(exp(post_log_like_point), na.rm=TRUE)), na.rm=TRUE)
-  mcmc_output$p_waic = sum(apply(post_log_like_point, 2, function(x) sd(x, na.rm=TRUE)^2), na.rm=TRUE)
+  mcmc_output$p_waic = sum(apply(post_log_like_point, 2:3, function(x) sd(x, na.rm=TRUE)^2), na.rm=TRUE)
   mcmc_output$WAIC = -2*(lppd - mcmc_output$p_waic)
 
   print(paste('Total time: ', round((proc.time()[3] - timer0)/60), 'minutes'))
@@ -2676,7 +2688,7 @@ dfosr_nig = function(Y, tau, X = NULL, K = NULL,
   if(!is.na(match('Yhat', mcmc_params))) post.Yhat = array(NA, c(nsave, T, m))
   if(!is.na(match('Ypred', mcmc_params))) post.Ypred = array(NA, c(nsave, T, m))
   if(forecasting) {post.Yfore = post.Yfore_hat = array(NA, c(nsave, m)); post.sigmafore = array(NA, c(nsave, 1))}
-  post_log_like_point = array(NA, c(nsave, T*m))
+  post_log_like_point = array(NA, c(nsave, T, m))
 
   # Total number of MCMC simulations:
   nstot = nburn+(nskip+1)*(nsave)
@@ -2985,7 +2997,7 @@ dfosr_nig = function(Y, tau, X = NULL, K = NULL,
         if(!is.na(match('Yhat', mcmc_params))) post.Yhat[isave,,] = Btheta # + sigma_e*rnorm(length(Y))
         if(!is.na(match('Ypred', mcmc_params))) post.Ypred[isave,,] = rnorm(n = T*m, mean = matrix(Btheta), sd = rep(sigma_et,m))
         if(forecasting) {post.Yfore[isave,] = Yfore; post.Yfore_hat[isave,] = Yfore_hat; post.sigmafore[isave,] = sigma_fore}
-        post_log_like_point[isave,] = dnorm(matrix(Yna), mean = matrix(Btheta), sd = rep(sigma_et,m), log = TRUE)
+        post_log_like_point[isave,,] = dnorm(Yna, mean = Btheta, sd = rep(sigma_et,m), log = TRUE)
 
         # And reset the skip counter:
         skipcount = 0
@@ -3005,9 +3017,12 @@ dfosr_nig = function(Y, tau, X = NULL, K = NULL,
   if(!is.na(match('Ypred', mcmc_params))) mcmc_output$Ypred = post.Ypred*sdY
   if(forecasting) {mcmc_output$Yfore = post.Yfore*sdY; mcmc_output$Yfore_hat = post.Yfore_hat*sdY; mcmc_output$sigma_fore = post.sigmafore*sdY}
 
+  # Include log-pointwise density:
+  mcmc_output$lpd = post_log_like_point - log(sdY)
+
   # Compute WAIC:
   lppd = sum(log(colMeans(exp(post_log_like_point), na.rm=TRUE)), na.rm=TRUE)
-  mcmc_output$p_waic = sum(apply(post_log_like_point, 2, function(x) sd(x, na.rm=TRUE)^2), na.rm=TRUE)
+  mcmc_output$p_waic = sum(apply(post_log_like_point, 2:3, function(x) sd(x, na.rm=TRUE)^2), na.rm=TRUE)
   mcmc_output$WAIC = -2*(lppd - mcmc_output$p_waic)
 
   print(paste('Total time: ', round((proc.time()[3] - timer0)/60), 'minutes'))
