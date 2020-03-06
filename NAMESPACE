@@ -3,6 +3,8 @@
 export(computeRho)
 export(credBands)
 export(dfosr)
+export(dfosr_basis)
+export(dfosr_nig)
 export(dss_select)
 export(dss_select_lasso)
 export(ergMean)

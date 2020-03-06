@@ -1868,6 +1868,7 @@ dfosr = function(Y, tau, X = NULL, K = NULL,
 #'
 #' @import  KFAS truncdist
 #' @importFrom refund fpca.face
+#' @export
 dfosr_basis = function(Y, tau, X = NULL,
                        use_dynamic_reg = TRUE,
                        basis = 'fpc', K = NULL, pve = .99,
@@ -2476,6 +2477,7 @@ dfosr_basis = function(Y, tau, X = NULL,
 #'
 #'
 #' @import  KFAS truncdist
+#' @export
 dfosr_nig = function(Y, tau, X = NULL, K = NULL,
                         use_dynamic_reg = TRUE,
                         nsave = 1000, nburn = 1000, nskip = 2,
