@@ -1,7 +1,8 @@
 # dfosr
 Dynamic function-on-scalars regression
 
-The package implements the dynamic function-on-scalars regression model (https://arxiv.org/abs/1806.01460), 
+The package implements the dynamic function-on-scalars regression model from
+*Dynamic Regression Models for Time-Ordered Functional Data* (Bayesian Analysis, 2020),
 where a functional data response is regressed on scalar predictors. 
 Here, both the functional response and the scalar predictors may be time-ordered. 
 The functions are modeled nonparametrically using an unknown basis expansion, which is learned from the data. 
@@ -38,8 +39,6 @@ p = ncol(X)
 # Run the MCMC with K = 6 factors
 out = dfosr(Y = Y, tau = tau, X = X, 
             K = 6, # Number of factors
-            factor_model = 'AR', # Model for the evolution
-            use_dynamic_reg = TRUE, # Dynamic or non-dynamic regression coefficients
             mcmc_params = list("beta", "fk", "alpha", "Yhat", "Ypred") # Parameters to save
             )
 
